@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Color Palette */
+  --color-primary: #0891B2;
+  --color-secondary: #22D3EE;
+  --color-cta: #22C55E;
+  --color-background-light: #FCFCFD;
+  --color-panel-light: #FFFFFF;
+  --color-text-main-light: #1F2937;
+  --color-text-sub-light: #6B7280;
+  --color-hover-light: #F9FAFB;
+  --color-border-light: #F3F4F6;
+  
+  --color-background-dark: #111827;
+  --color-panel-dark: #1F2937;
+  --color-text-main-dark: #F9FAFB;
+  --color-text-sub-dark: #9CA3AF;
+  --color-hover-dark: #374151;
+  --color-border-dark: #4B5563;
+  
+  /* Shadow */
+  --shadow-light: 0 4px 12px rgba(0,0,0,0.05);
+  --shadow-dark: 0 4px 12px rgba(255,255,255,0.03);
+  
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+  --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
+
+  --border-radius: 12px;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+}
+
+body {
+  font-family: 'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+    'Noto Color Emoji';
+  background-color: var(--color-background-light);
+  color: var(--color-text-main-light);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Light Theme Variables */
+body[data-theme='light'] {
+  --app-bg: var(--color-background-light);
+  --app-panel: var(--color-panel-light);
+  --app-text-main: var(--color-text-main-light);
+  --app-text-sub: var(--color-text-sub-light);
+  --app-hover: var(--color-hover-light);
+  --app-border: var(--color-border-light);
+  --app-shadow: var(--shadow-light);
+  background-color: var(--app-bg);
+  color: var(--app-text-main);
+}
+
+/* Dark Theme Variables */
+body[data-theme='dark'] {
+  --app-bg: var(--color-background-dark);
+  --app-panel: var(--color-panel-dark);
+  --app-text-main: var(--color-text-main-dark);
+  --app-text-sub: var(--color-text-sub-dark);
+  --app-hover: var(--color-hover-dark);
+  --app-border: var(--color-border-dark);
+  --app-shadow: var(--shadow-dark);
+  background-color: var(--app-bg);
+  color: var(--app-text-main);
+}
+
+/* Utilities */
+.cursor-pointer { cursor: pointer; }
+.transition-all { transition: all 0.2s ease-in-out; }
