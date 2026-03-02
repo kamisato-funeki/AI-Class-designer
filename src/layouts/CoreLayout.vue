@@ -1,12 +1,12 @@
 <template>
-  <a-layout style="height: 100vh" >
+  <a-layout style="height: 100vh; position: relative;">
+    <!-- Mobile Overlay -->
+    <div v-if="isMobile && !collapsed" class="mobile-overlay" @click="collapsed = true"></div>
+
     <!-- Sidebar -->
-    <a-layout-sider
-      v-model:collapsed="collapsed"
-      :trigger="null"
-      collapsible
-      theme="light"
-      :style="{ borderRight: '1px solid var(--color-border-light)', position: '' }">
+    <a-layout-sider v-model:collapsed="collapsed" :trigger="null" collapsible :collapsed-width="isMobile ? 0 : 80"
+      theme="light" :class="{ 'mobile-sider': isMobile }"
+      :style="{ borderRight: '1px solid var(--color-border-light)', zIndex: 10 }">
       <div class="logo-container">
         <div class="logo-icon">ACD</div>
         <span v-if="!collapsed" class="logo-text">Class Designer</span>
@@ -14,10 +14,7 @@
 
       <!-- Core Modules -->
       <div class="menu-container">
-        <a-button v-if="!collapsed"
-          type="primary"
-          class="new-course-btn"
-          @click="handleNewCourse">
+        <a-button v-if="!collapsed" type="primary" class="new-course-btn" @click="handleNewCourse">
           <template #icon>
             <PlusOutlined />
           </template>
@@ -98,15 +95,45 @@
     <!-- Main Content -->
     <a-layout>
       <a-layout-header
-        style="background: var(--color-background-light); padding: 0 24px; display: flex; align-items: center; border-bottom: 1px solid var(--color-border-light);">
+        :style="{ background: 'var(--color-background-light)', padding: isMobile ? '0 16px' : '0 24px', display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)' }">
         <menu-unfold-outlined v-if="collapsed" class="trigger" @click="() => (collapsed = !collapsed)" />
         <menu-fold-outlined v-else class="trigger" @click="() => (collapsed = !collapsed)" />
         <div style="flex: 1"></div>
         <!-- Right side header items like user avatar can go here -->
+        <div class="header-actions">
+          <a-dropdown placement="bottomRight">
+            <div class="user-avatar-trigger" style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+              <a-avatar :src="userStore.user?.avatar" :size="32">
+                <template #icon>
+                  <UserOutlined />
+                </template>
+              </a-avatar>
+              <span v-if="!isMobile" style="font-weight: 500;">{{ userStore.user?.name || '用户' }}</span>
+            </div>
+            <template #overlay>
+              <a-menu @click="handleDropdownClick">
+                <a-menu-item key="profile">
+                  <UserOutlined /> 个人中心
+                </a-menu-item>
+                <a-menu-item key="classes">
+                  <TeamOutlined /> 我的班级
+                </a-menu-item>
+                <a-menu-item key="messages">
+                  <BellOutlined /> 我的消息
+                </a-menu-item>
+                <a-menu-item key="settings">
+                  <SettingOutlined /> 设置
+                </a-menu-item>
+                <a-menu-divider />
+                <a-menu-item key="logout" style="color: var(--color-error)">退出登录</a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+        </div>
       </a-layout-header>
       <a-layout-content :style="{
-        margin: '24px 16px',
-        padding: '24px',
+        margin: isMobile ? '16px 12px' : '24px 16px',
+        padding: isMobile ? '16px' : '24px',
         background: 'var(--color-panel-light)',
         minHeight: '280px',
         borderRadius: '12px',
@@ -116,15 +143,37 @@
       </a-layout-content>
     </a-layout>
 
-    <a-modal v-model:open="newCourseModalVisible" title="新建课件" @ok="createNewCourse">
-      <p>选择科目...</p>
-      <!-- Form to select subject goes here -->
+    <a-modal v-model:open="newCourseModalVisible" title="新建课件" @ok="createNewCourse" @cancel="closeNewCourseModal"
+      :confirmLoading="creatingCourse">
+      <a-form layout="vertical" :model="formState">
+        <a-form-item label="课件名称" required>
+          <a-input v-model:value="formState.title" placeholder="请输入课件名称" />
+        </a-form-item>
+        <a-form-item label="适用科目">
+          <a-select v-model:value="formState.subject" placeholder="请选择科目">
+            <a-select-option value="语文">语文</a-select-option>
+            <a-select-option value="数学">数学</a-select-option>
+            <a-select-option value="英语">英语</a-select-option>
+            <a-select-option value="综合">综合</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="适用年级">
+          <a-select v-model:value="formState.grade" placeholder="请选择年级">
+            <a-select-option value="一年级">一年级</a-select-option>
+            <a-select-option value="二年级">二年级</a-select-option>
+            <a-select-option value="三年级">三年级</a-select-option>
+            <a-select-option value="四年级">四年级</a-select-option>
+            <a-select-option value="五年级">五年级</a-select-option>
+            <a-select-option value="六年级">六年级</a-select-option>
+          </a-select>
+        </a-form-item>
+      </a-form>
     </a-modal>
   </a-layout>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   HomeOutlined,
@@ -139,11 +188,49 @@ import {
   MenuFoldOutlined,
   PlusOutlined
 } from '@ant-design/icons-vue';
+import { useUserStore } from '../stores/userStore';
+import { useCoursewareStore } from '../stores/coursewareStore';
 
 const router = useRouter();
+const userStore = useUserStore();
+const coursewareStore = useCoursewareStore();
 const collapsed = ref<boolean>(false);
 const selectedKeys = ref<string[]>(['workspace']);
 const newCourseModalVisible = ref<boolean>(false);
+const creatingCourse = ref<boolean>(false);
+const isMobile = ref<boolean>(false);
+
+const formState = ref({
+  title: '',
+  subject: undefined,
+  grade: undefined
+});
+
+const checkMobile = () => {
+  const currentIsMobile = window.innerWidth <= 768;
+  if (isMobile.value !== currentIsMobile) {
+    isMobile.value = currentIsMobile;
+    collapsed.value = currentIsMobile;
+  }
+};
+
+onMounted(async () => {
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+
+  // Auto login mock for testing
+  if (!userStore.user) {
+    try {
+      await userStore.login('admin', 'admin');
+    } catch {
+      // ignore
+    }
+  }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile);
+});
 
 const handleMenuClick = (info: { key: string }) => {
   if (info.key === 'workspace') router.push('/');
@@ -157,15 +244,42 @@ const handleMenuClick = (info: { key: string }) => {
   if (info.key.startsWith('course') && info.key !== 'course_all') {
     router.push('/cocreation'); // jump to workspace for specific course
   }
+  if (isMobile.value) {
+    collapsed.value = true;
+  }
+};
+
+const handleDropdownClick = async (info: { key: string }) => {
+  if (info.key === 'logout') {
+    await userStore.logout();
+    router.push('/login');
+  } else {
+    handleMenuClick(info);
+  }
 };
 
 const handleNewCourse = () => {
+  formState.value = { title: '', subject: undefined, grade: undefined };
   newCourseModalVisible.value = true;
 };
 
-const createNewCourse = () => {
+const closeNewCourseModal = () => {
   newCourseModalVisible.value = false;
-  router.push('/cocreation');
+};
+
+const createNewCourse = async () => {
+  if (!formState.value.title) return;
+  creatingCourse.value = true;
+  try {
+    await coursewareStore.createCourseware(formState.value);
+    newCourseModalVisible.value = false;
+    router.push('/cocreation');
+  } finally {
+    creatingCourse.value = false;
+  }
+  if (isMobile.value) {
+    collapsed.value = true;
+  }
 };
 </script>
 
@@ -243,5 +357,20 @@ const createNewCourse = () => {
 
 :deep(.ant-menu-item-selected .anticon) {
   color: white !important;
+}
+
+.mobile-sider {
+  position: absolute !important;
+  height: 100vh;
+}
+
+.mobile-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 9;
 }
 </style>

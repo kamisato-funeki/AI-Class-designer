@@ -1,81 +1,145 @@
 <template>
-  <div class="messages-container">
-    <div class="page-header">
-      <h2>消息列表</h2>
-      <a-button>全部标记为已读</a-button>
-    </div>
+  <a-spin :spinning="loading">
+    <div class="messages-container">
+      <div class="page-header">
+        <h2>消息列表 <a-badge v-if="messageStore.unreadCount > 0" :count="messageStore.unreadCount" /></h2>
+        <a-button @click="markAllAsRead">全部标记为已读</a-button>
+      </div>
 
-    <a-tabs v-model:activeKey="activeTab" class="bg-white-tabs">
-      <a-tab-pane key="all" tab="全部消息">
-        <a-list item-layout="horizontal" :data-source="messages">
-          <template #renderItem="{ item }">
-            <a-list-item class="message-item" :class="{ read: item.isRead }">
-              <template #actions>
-                <a-button type="link" danger>删除</a-button>
-              </template>
-              <a-list-item-meta :description="item.summary">
-                <template #title>
-                  <div class="msg-title">
-                    <a-badge v-if="!item.isRead" dot :offset="[-10, 5]" />
-                    <span class="title-text">{{ item.title }}</span>
-                    <span class="time-badge">{{ item.time }}</span>
-                  </div>
+      <a-tabs v-model:activeKey="activeTab" class="bg-white-tabs">
+        <a-tab-pane key="all" tab="全部消息">
+          <a-list item-layout="horizontal" :data-source="filteredMessagesActive">
+            <template #renderItem="{ item }">
+              <a-list-item class="message-item" :class="{ read: item.isRead }"
+                @click="!item.isRead && markAsRead(item.id)">
+                <template #actions>
+                  <a-button type="link" danger @click.stop="deleteMsg(item.id)">删除</a-button>
                 </template>
-                <template #avatar>
-                  <a-avatar :style="{ backgroundColor: item.type === 'system' ? '#0891B2' : '#22C55E' }">
-                    <template #icon>
-                      <BellOutlined v-if="item.type === 'system'" />
-                      <MessageOutlined v-else />
-                    </template>
-                  </a-avatar>
+                <a-list-item-meta :description="item.content">
+                  <template #title>
+                    <div class="msg-title">
+                      <a-badge v-if="!item.isRead" dot :offset="[-10, 5]" />
+                      <span class="title-text">{{ item.senderName }} {{ item.type === 'system' ? '发来一条通知' : '发来一条消息'
+                        }}</span>
+                      <span class="time-badge">{{ item.createTime }}</span>
+                    </div>
+                  </template>
+                  <template #avatar>
+                    <a-avatar :style="{ backgroundColor: item.type === 'system' ? '#0891B2' : '#22C55E' }">
+                      <template #icon>
+                        <BellOutlined v-if="item.type === 'system'" />
+                        <MessageOutlined v-else />
+                      </template>
+                    </a-avatar>
+                  </template>
+                </a-list-item-meta>
+              </a-list-item>
+            </template>
+          </a-list>
+        </a-tab-pane>
+        <a-tab-pane key="system" tab="系统通知">
+          <a-list item-layout="horizontal" :data-source="filteredMessagesActive">
+            <template #renderItem="{ item }">
+              <a-list-item class="message-item" :class="{ read: item.isRead }"
+                @click="!item.isRead && markAsRead(item.id)">
+                <template #actions>
+                  <a-button type="link" danger @click.stop="deleteMsg(item.id)">删除</a-button>
                 </template>
-              </a-list-item-meta>
-            </a-list-item>
-          </template>
-        </a-list>
-      </a-tab-pane>
-      <a-tab-pane key="system" tab="系统通知">
-        <a-empty description="暂无系统通知" />
-      </a-tab-pane>
-      <a-tab-pane key="interaction" tab="互动消息">
-        <a-empty description="暂无互动消息" />
-      </a-tab-pane>
-    </a-tabs>
-  </div>
+                <a-list-item-meta :description="item.content">
+                  <template #title>
+                    <div class="msg-title">
+                      <a-badge v-if="!item.isRead" dot :offset="[-10, 5]" />
+                      <span class="title-text">{{ item.senderName }}</span>
+                      <span class="time-badge">{{ item.createTime }}</span>
+                    </div>
+                  </template>
+                  <template #avatar>
+                    <a-avatar style="background-color: #0891B2;">
+                      <template #icon>
+                        <BellOutlined />
+                      </template>
+                    </a-avatar>
+                  </template>
+                </a-list-item-meta>
+              </a-list-item>
+            </template>
+          </a-list>
+        </a-tab-pane>
+        <a-tab-pane key="user" tab="互动消息">
+          <a-list item-layout="horizontal" :data-source="filteredMessagesActive">
+            <template #renderItem="{ item }">
+              <a-list-item class="message-item" :class="{ read: item.isRead }"
+                @click="!item.isRead && markAsRead(item.id)">
+                <template #actions>
+                  <a-button type="link" danger @click.stop="deleteMsg(item.id)">删除</a-button>
+                </template>
+                <a-list-item-meta :description="item.content">
+                  <template #title>
+                    <div class="msg-title">
+                      <a-badge v-if="!item.isRead" dot :offset="[-10, 5]" />
+                      <span class="title-text">{{ item.senderName }} 发来互动消息</span>
+                      <span class="time-badge">{{ item.createTime }}</span>
+                    </div>
+                  </template>
+                  <template #avatar>
+                    <a-avatar :src="item.senderAvatar" style="background-color: #22C55E;">
+                      <template #icon>
+                        <MessageOutlined />
+                      </template>
+                    </a-avatar>
+                  </template>
+                </a-list-item-meta>
+              </a-list-item>
+            </template>
+          </a-list>
+        </a-tab-pane>
+      </a-tabs>
+    </div>
+  </a-spin>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { BellOutlined, MessageOutlined } from '@ant-design/icons-vue';
+import { useMessageStore } from '../stores/messageStore';
+import { message } from 'ant-design-vue';
 
+const messageStore = useMessageStore();
 const activeTab = ref('all');
+const loading = ref(true);
 
-const messages = ref([
-  {
-    id: 1,
-    type: 'system',
-    title: '版本更新通知',
-    summary: 'AI Class Designer v2.0 已发布，新增模板库功能，快来体验吧！',
-    time: '刚刚',
-    isRead: false
-  },
-  {
-    id: 2,
-    type: 'interaction',
-    title: '作业提交提醒',
-    summary: '初二三班 张强 提交了《勾股定理课后练习》',
-    time: '2小时前',
-    isRead: false
-  },
-  {
-    id: 3,
-    type: 'system',
-    title: '文档解析完成',
-    summary: '您上传的《初二数学历年真题.pdf》已成功解析并加入知识库。',
-    time: '昨天 15:30',
-    isRead: true
+onMounted(async () => {
+  loading.value = true;
+  await messageStore.loadMessages();
+  loading.value = false;
+});
+
+const filteredMessagesActive = computed(() => {
+  if (activeTab.value === 'all') return messageStore.messages;
+  return messageStore.messages.filter(m => m.type === activeTab.value);
+});
+
+const markAllAsRead = async () => {
+  loading.value = true;
+  const unreads = messageStore.messages.filter(m => !m.isRead);
+  for (const m of unreads) {
+    await messageStore.markAsRead(m.id);
   }
-]);
+  loading.value = false;
+  message.success('全部标记为已读');
+};
+
+const deleteMsg = async (id: string) => {
+  loading.value = true;
+  await messageStore.deleteMessage(id);
+  loading.value = false;
+};
+
+const markAsRead = async (id: string) => {
+  loading.value = true;
+  await messageStore.markAsRead(id);
+  loading.value = false;
+};
 </script>
 
 <style scoped>
