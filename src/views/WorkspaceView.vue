@@ -10,6 +10,7 @@
     <div class="input-core">
       <a-textarea v-model:value="inputValue" placeholder="输入课程主题，或拖拽上传参考文件 (PDF/图片)..." :bordered="false"
         :auto-size="{ minRows: 4, maxRows: 8 }" class="main-input" />
+
       <div class="input-actions">
         <a-space>
           <a-tooltip title="语音输入">
@@ -26,6 +27,10 @@
               </template>
             </a-button>
           </a-tooltip>
+          <a-select v-model:value="subject"
+            show-search placeholder="科目" :options="options"
+            :filter-option="filterOption" style="width: 100px;" size="large">
+          </a-select>
         </a-space>
         <a-button type="primary" size="large" class="send-btn" @click="handleSend">
           <template #icon>
@@ -113,6 +118,7 @@ import {
 
 const router = useRouter();
 const inputValue = ref('');
+const subject = ref(null);
 
 const dynamics = [
   { title: '初二三班 提交了 5 份作业', time: '10分钟前' },
@@ -126,6 +132,17 @@ const dynamics = [
 const handleSend = () => {
   router.push('/cocreation');
 };
+
+const options = [
+  { value: 'math', label: '数学' },
+  { value: 'chinese', label: '语文' },
+  { value: 'english', label: '英语' },
+];
+const filterOption = (input: string, option: { label: string }) => {
+  return option.label.toLowerCase().includes(input.toLowerCase());
+};
+
+
 </script>
 
 <style scoped>
