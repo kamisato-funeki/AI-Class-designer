@@ -8,6 +8,8 @@ import type {
   ChatMessage,
   BoardMaterial,
   WorkspaceStats,
+  StudentMessage,
+  StudentInfo,
 } from '../types/types'
 import { v4 as uuidv4 } from 'uuid'
 import dayjs from 'dayjs'
@@ -23,7 +25,7 @@ const now = () => dayjs().format('YYYY-MM-DD HH:mm:ss')
 // Currently returning mocked data.
 
 export const userApi = {
-  login: async (username: string, password: string): Promise<{ token: string; user: User }> => {
+  login: async (_username: string, _password: string): Promise<{ token: string; user: User }> => {
     // url: '/api/auth/login'
     await delay(500)
     return {
@@ -65,7 +67,7 @@ export const workspaceApi = {
       messageUnread: 5,
     }
   },
-  uploadVoice: async (file: File): Promise<{ text: string }> => {
+  uploadVoice: async (_file: File): Promise<{ text: string }> => {
     // url: '/api/workspace/voice'
     await delay(1000)
     return { text: '这是语音转换后的文字内容...' }
@@ -145,6 +147,87 @@ export const classApi = {
       dueDate: data.dueDate,
     }
   },
+  getStudents: async (classId: string): Promise<StudentInfo[]> => {
+    await delay(300)
+    const list = []
+    for (let i = 1; i <= 45; i++) {
+      list.push({
+        id: `stu_${i}`,
+        name: `学生${i}`,
+        avatar: `https://api.dicebear.com/7.x/miniavs/svg?seed=${i}`,
+        classId: classId,
+        progress: `${Math.floor(Math.random() * 40 + 60)}%`,
+        grades: [Math.floor(Math.random() * 30 + 70), Math.floor(Math.random() * 30 + 70)],
+        activeCount: Math.floor(Math.random() * 20),
+        createTime: now(),
+      })
+    }
+    return list
+  },
+  getSchedule: async (classId: string) => {
+    await delay(300)
+    return [
+      {
+        id: 's1',
+        classId,
+        day: '周一',
+        timeStr: '08:00 - 08:45',
+        subject: '语文',
+        teacher: '张老师',
+      },
+      {
+        id: 's2',
+        classId,
+        day: '周一',
+        timeStr: '09:00 - 09:45',
+        subject: '数学',
+        teacher: '李老师',
+      },
+      {
+        id: 's3',
+        classId,
+        day: '周二',
+        timeStr: '10:00 - 10:45',
+        subject: '英语',
+        teacher: '王老师',
+      },
+    ]
+  },
+  getStudentMessages: async (studentId: string): Promise<StudentMessage[]> => {
+    await delay(200)
+    return [
+      {
+        id: 'msg1',
+        studentId,
+        senderId: studentId,
+        content: '老师好，我不太理解这节课的作业。',
+        isRead: true,
+        direction: 'receive',
+        createTime: now(),
+      },
+      {
+        id: 'msg2',
+        studentId,
+        senderId: 'teacher',
+        content: '好的，哪里不理解呢？',
+        isRead: true,
+        direction: 'send',
+        createTime: now(),
+      },
+    ]
+  },
+  sendStudentMessage: async (studentId: string, content: string): Promise<StudentMessage> => {
+    await delay(200)
+    return {
+      id: uuidv4(),
+      studentId,
+      senderId: 'teacher',
+      content,
+      isRead: false,
+      direction: 'send',
+      createTime: now(),
+    }
+  },
 }
 
 export const ragApi = {
@@ -185,7 +268,7 @@ export const ragApi = {
       uploadTime: now(),
     }
   },
-  deleteFile: async (id: string): Promise<void> => {
+  deleteFile: async (_id: string): Promise<void> => {
     // url: `/api/rag/files/${id}`
     await delay(400)
   },
@@ -269,18 +352,18 @@ export const messageApi = {
       },
     ]
   },
-  markAsRead: async (id: string): Promise<void> => {
+  markAsRead: async (_id: string): Promise<void> => {
     // url: `/api/messages/${id}/read`
     await delay(200)
   },
-  deleteMessage: async (id: string): Promise<void> => {
+  deleteMessage: async (_id: string): Promise<void> => {
     // url: `/api/messages/${id}`
     await delay(300)
   },
 }
 
 export const cocreationApi = {
-  getMaterials: async (coursewareId: string): Promise<BoardMaterial[]> => {
+  getMaterials: async (_coursewareId: string): Promise<BoardMaterial[]> => {
     // url: `/api/cocreation/${coursewareId}/materials`
     await delay(500)
     return [
@@ -289,7 +372,7 @@ export const cocreationApi = {
       { id: 'mat3', type: 'pdf', name: '拓展阅读.pdf', url: '/data/sample.pdf' },
     ]
   },
-  chat: async (message: string, isVoice: boolean, file?: File): Promise<ChatMessage> => {
+  chat: async (_message: string, _isVoice: boolean, _file?: File): Promise<ChatMessage> => {
     // url: '/api/cocreation/chat'
     await delay(1500)
     return {

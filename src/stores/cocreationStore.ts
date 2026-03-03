@@ -14,10 +14,33 @@ export const useCocreationStore = defineStore('cocreation', () => {
   }
 
   const sendChatMessage = async (content: string, isVoice: boolean = false, file?: File) => {
+    // For mock backward compatibility, if this is called directly, we mock
     const res = await cocreationApi.chat(content, isVoice, file)
     chatHistory.value.push(res)
     return res
   }
 
-  return { currentCoursewareId, materials, chatHistory, loadMaterials, sendChatMessage }
+  const addMessage = (msg: ChatMessage) => {
+    chatHistory.value.push(msg)
+  }
+
+  const updateLastMessage = (content: string) => {
+    if (chatHistory.value.length > 0) {
+      const idx = chatHistory.value.length - 1
+      const lastMsg = chatHistory.value[idx]
+      if (lastMsg) {
+        lastMsg.content = content
+      }
+    }
+  }
+
+  return {
+    currentCoursewareId,
+    materials,
+    chatHistory,
+    loadMaterials,
+    sendChatMessage,
+    addMessage,
+    updateLastMessage,
+  }
 })

@@ -60,6 +60,36 @@ export interface Message {
   createTime: string
 }
 
+export interface StudentInfo {
+  id: string
+  name: string
+  avatar: string
+  classId: string
+  progress: string
+  grades: number[]
+  activeCount: number
+  createTime: string
+}
+
+export interface StudentMessage {
+  id: string
+  studentId: string
+  senderId: string
+  content: string
+  isRead: boolean
+  direction: 'send' | 'receive'
+  createTime: string
+}
+
+export interface CourseScheduleItem {
+  id: string
+  classId: string
+  day: string
+  timeStr: string
+  subject: string
+  teacher: string
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
