@@ -20,7 +20,7 @@
                     <div class="msg-title">
                       <a-badge v-if="!item.isRead" dot :offset="[-10, 5]" />
                       <span class="title-text">{{ item.senderName }} {{ item.type === 'system' ? '发来一条通知' : '发来一条消息'
-                        }}</span>
+                      }}</span>
                       <span class="time-badge">{{ item.createTime }}</span>
                     </div>
                   </template>
@@ -108,10 +108,11 @@ const messageStore = useMessageStore();
 const activeTab = ref('all');
 const loading = ref(true);
 
-onMounted(async () => {
+onMounted(() => {
   loading.value = true;
-  await messageStore.loadMessages();
-  loading.value = false;
+  messageStore.loadMessages().finally(() => {
+    loading.value = false;
+  });
 });
 
 const filteredMessagesActive = computed(() => {

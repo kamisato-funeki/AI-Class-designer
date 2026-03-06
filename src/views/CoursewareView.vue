@@ -112,10 +112,11 @@ const searchKeyword = ref('');
 const filterSubject = ref('all');
 const sortOrder = ref('newest');
 
-onMounted(async () => {
+onMounted(() => {
   loading.value = true;
-  await coursewareStore.loadCoursewares();
-  loading.value = false;
+  coursewareStore.loadCoursewares().finally(() => {
+    loading.value = false;
+  });
 });
 
 const filteredCoursewares = computed(() => {

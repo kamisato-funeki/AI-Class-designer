@@ -90,7 +90,7 @@
                 <div class="course-cover-placeholder"
                   :style="{ backgroundImage: `url(${cw.coverImage})`, backgroundSize: 'cover' }">
                   <div style="background: rgba(255,255,255,0.7); padding: 4px 8px; border-radius: 4px;">{{ cw.subject
-                  }}·{{ cw.grade }}</div>
+                    }}·{{ cw.grade }}</div>
                 </div>
               </template>
               <a-card-meta :title="cw.title" :description="`${cw.updateTime} 编辑`">
@@ -113,7 +113,7 @@
                 <div class="course-cover-placeholder"
                   :style="{ backgroundImage: `url(${cw.coverImage})`, backgroundSize: 'cover' }">
                   <div style="background: rgba(255,255,255,0.7); padding: 4px 8px; border-radius: 4px;">{{ cw.subject
-                  }}·{{ cw.grade }}</div>
+                    }}·{{ cw.grade }}</div>
                 </div>
               </template>
               <a-card-meta :title="cw.title" :description="`${cw.updateTime} 编辑`">
@@ -198,13 +198,14 @@ const dynamics = [
   { title: '初三四班 语文阅读理解打卡完成', time: '昨天', description: '全班完成打卡' },
 ];
 
-onMounted(async () => {
+onMounted(() => {
   loading.value = true;
-  await Promise.all([
+  Promise.all([
     workspaceStore.loadStats(),
     coursewareStore.loadCoursewares()
-  ]);
-  loading.value = false;
+  ]).finally(() => {
+    loading.value = false;
+  });
 });
 
 const handleVoiceInput = () => {

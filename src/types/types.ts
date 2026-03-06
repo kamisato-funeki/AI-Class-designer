@@ -113,3 +113,27 @@ export interface WorkspaceStats {
   studentCount: number
   messageUnread: number
 }
+
+export interface GroupChat {
+  id: string
+  name: string
+  avatar: string
+  lastMessage?: string
+  lastSender?: string
+  lastMessageTime?: string
+  unreadCount: number
+  memberCount: number
+}
+
+export interface GroupMessage {
+  id: string
+  groupId: string
+  senderId: string
+  senderName: string
+  senderAvatar: string
+  senderRole?: string
+  senderLevel?: number
+  content: string
+  createTime: string
+  direction: 'send' | 'receive'
+}

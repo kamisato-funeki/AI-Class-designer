@@ -126,10 +126,11 @@ const dataSource = computed(() => {
   );
 });
 
-onMounted(async () => {
+onMounted(() => {
   loading.value = true;
-  await ragStore.loadFiles();
-  loading.value = false;
+  ragStore.loadFiles().finally(() => {
+    loading.value = false;
+  });
 });
 
 const onSelectChange = (keys: string[]) => {

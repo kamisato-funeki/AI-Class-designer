@@ -3,28 +3,32 @@
     <div class="classes-container">
       <div class="page-header">
         <h2>我的班级</h2>
-        <a-button type="primary" @click="createClassVisible = true">新建班级</a-button>
       </div>
 
       <div class="content-split">
         <!-- Left: Class List -->
         <div class="class-list-area">
-          <a-card hoverable class="class-card" size="small" v-for="cls in classesStore.classes" :key="cls.id"
-            :class="{ active: classesStore.currentClass?.id === cls.id }" @click="handleClassSwitch(cls.id)">
-            <template #title>
-              <span style="font-size: 15px;">{{ cls.name }}</span>
-            </template>
-            <template #extra>
-              <a-badge :count="`${cls.studentCount}人`"
-                :number-style="{ backgroundColor: 'var(--color-background-light)', color: 'var(--color-text-main-light)' }" />
-            </template>
-            <p style="margin: 0; color: gray;font-size: 10px;">创立: {{ cls.createTime.split(' ')[0] }}</p>
-          </a-card>
+          <div class="class-list-scroll">
+            <a-card hoverable class="class-card" size="small" v-for="cls in classesStore.classes" :key="cls.id"
+              :class="{ active: classesStore.currentClass?.id === cls.id }" @click="handleClassSwitch(cls.id)">
+              <template #title>
+                <span style="font-size: 15px;">{{ cls.name }}</span>
+              </template>
+              <template #extra>
+                <a-badge :count="`${cls.studentCount}人`"
+                  :number-style="{ backgroundColor: 'var(--color-background-light)', color: 'var(--color-text-main-light)' }" />
+              </template>
+              <p style="margin: 0; color: gray;font-size: 10px;">创立: {{ cls.createTime.split(' ')[0] }}</p>
+            </a-card>
+          </div>
+          <div class="class-list-footer">
+            <a-button type="primary" block @click="createClassVisible = true">新建班级</a-button>
+          </div>
         </div>
 
         <!-- Right: Class Details -->
         <div class="class-detail-area" v-if="classesStore.currentClass">
-          <a-card :bordered="false" class="detail-card" v-show="!activeChatStudent">
+          <a-card :bordered="false" class="detail-card" v-show="!classesStore.activeGroupChat">
             <div class="detail-header">
               <h3>{{ classesStore.currentClass.name }} - 详情面板</h3>
               <a-space>
@@ -41,7 +45,6 @@
                   <template #bodyCell="{ column, record }">
                     <template v-if="column.key === 'action'">
                       <a-space>
-                        <a-button type="link" size="small" @click="openStudentChat(record)">聊天</a-button>
                         <a-button type="link" size="small" @click="openStudentDetails(record)">详情</a-button>
                       </a-space>
                     </template>
@@ -63,34 +66,42 @@
                   <a-timeline-item color="gray">班级创建完成</a-timeline-item>
                 </a-timeline>
               </a-tab-pane>
+              <a-tab-pane key="chats" tab="班级消息">
+                <a-list item-layout="horizontal" :data-source="classesStore.groupChats" class="group-chat-list">
+                  <template #renderItem="{ item }">
+                    <a-list-item class="group-chat-item" @click="handleOpenGroupChat(item)">
+                      <a-list-item-meta>
+                        <template #avatar>
+                          <a-avatar :src="item.avatar" :size="48" style="border-radius: 50%;" />
+                        </template>
+                        <template #title>
+                          <div class="group-chat-title-row">
+                            <span class="chat-name">{{ item.name }}</span>
+                            <span class="chat-time">{{ item.lastMessageTime }}</span>
+                          </div>
+                        </template>
+                        <template #description>
+                          <div class="group-chat-desc-row">
+                            <span class="chat-last-msg">
+                              <span v-if="item.lastSender" class="chat-sender">{{ item.lastSender }}: </span>
+                              {{ item.lastMessage }}
+                            </span>
+                            <a-badge v-if="item.unreadCount > 0"
+                              :count="item.unreadCount > 99 ? '99+' : item.unreadCount" class="chat-badge" />
+                          </div>
+                        </template>
+                      </a-list-item-meta>
+                    </a-list-item>
+                  </template>
+                </a-list>
+              </a-tab-pane>
             </a-tabs>
           </a-card>
 
-          <!-- Chat 面板 -->
-          <a-card :bordered="false" class="detail-card chat-card" v-if="activeChatStudent">
-            <div class="chat-header">
-              <div class="chat-title">
-                <a-button type="text" @click="activeChatStudent = null" style="margin-right: 8px;">&lt; 返回</a-button>
-                <h3>与 {{ activeChatStudent.name }} 的聊天</h3>
-              </div>
-              <a-avatar :src="activeChatStudent.avatar" />
-            </div>
-
-            <div class="chat-messages" ref="chatScrollRef">
-              <div v-for="msg in classesStore.currentStudentMessages" :key="msg.id" class="chat-bubble-row"
-                :class="msg.direction === 'send' ? 'chat-right' : 'chat-left'">
-                <div class="chat-bubble">
-                  {{ msg.content }}
-                </div>
-                <div class="chat-time">{{ msg.createTime }}</div>
-              </div>
-            </div>
-
-            <div class="chat-input-area">
-              <a-input-search v-model:value="chatInput" placeholder="输入消息..." enter-button="发送" size="large"
-                @search="handleSendMessage" />
-            </div>
-          </a-card>
+          <!-- Group Chat 面板 -->
+          <div class="chat-board-container" v-if="classesStore.activeGroupChat">
+            <ClassChatBoard @back="classesStore.activeGroupChat = null" />
+          </div>
 
         </div>
         <div v-else
@@ -136,10 +147,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, onMounted } from 'vue';
 import { message } from 'ant-design-vue';
 import { useClassesStore } from '../stores/classesStore';
-import type { StudentInfo } from '../types/types';
+import type { StudentInfo, GroupChat } from '../types/types';
+import ClassChatBoard from './classesComp/ClassChatBoard.vue';
 import { use } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
 import { BarChart, LineChart } from 'echarts/charts';
@@ -149,7 +161,7 @@ import VChart from 'vue-echarts';
 use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent]);
 
 const classesStore = useClassesStore();
-const activeTab = ref('students');
+const activeTab = ref('chats'); // Default to chats for demonstration
 const loading = ref(true);
 
 const createClassVisible = ref(false);
@@ -160,25 +172,25 @@ const taskType = ref<'homework' | 'discussion' | 'material'>('homework');
 const formStateClass = ref({ name: '', grade: '三年级', subject: '全部' });
 const formStateTask = ref<{ title: string; description: string; type: 'homework' | 'discussion' | 'material' }>({ title: '', description: '', type: 'homework' });
 
-const activeChatStudent = ref<StudentInfo | null>(null);
-const chatInput = ref('');
-const chatScrollRef = ref<HTMLElement | null>(null);
-
 const activeStudentDetails = ref<StudentInfo | null>(null);
 const chartOption = ref({});
 
-onMounted(async () => {
+onMounted(() => {
   loading.value = true;
-  await classesStore.loadClasses();
-  if (classesStore.currentClass) {
-    await classesStore.loadTasks(classesStore.currentClass.id);
-  }
-  loading.value = false;
+  (async () => {
+    await classesStore.loadClasses();
+    await classesStore.loadGroupChats();
+    if (classesStore.currentClass) {
+      await classesStore.loadTasks(classesStore.currentClass.id);
+    }
+  })().finally(() => {
+    loading.value = false;
+  });
 });
 
 const handleClassSwitch = async (id: string) => {
   loading.value = true;
-  activeChatStudent.value = null; // reset chat mapping
+  classesStore.activeGroupChat = null;
   await classesStore.selectClass(id);
   loading.value = false;
 };
@@ -212,28 +224,10 @@ const handleCreateTask = async () => {
   message.success('配置成功');
 };
 
-const openStudentChat = async (student: StudentInfo) => {
-  activeChatStudent.value = student;
+const handleOpenGroupChat = async (chat: GroupChat) => {
   loading.value = true;
-  await classesStore.loadStudentMessages(student.id);
+  await classesStore.selectGroupChat(chat);
   loading.value = false;
-  scrollToBottom();
-};
-
-const handleSendMessage = async () => {
-  if (!chatInput.value.trim() || !activeChatStudent.value) return;
-  const content = chatInput.value;
-  chatInput.value = '';
-  await classesStore.sendStudentMessage(activeChatStudent.value.id, content);
-  scrollToBottom();
-};
-
-const scrollToBottom = () => {
-  nextTick(() => {
-    if (chatScrollRef.value) {
-      chatScrollRef.value.scrollTop = chatScrollRef.value.scrollHeight;
-    }
-  });
 };
 
 const openStudentDetails = (student: StudentInfo) => {
@@ -303,8 +297,20 @@ import { h } from 'vue';
   flex: 0 0 150px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  overflow: hidden;
+}
+
+.class-list-scroll {
+  flex: 1;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-right: 4px;
+}
+
+.class-list-footer {
+  margin-top: 16px;
 }
 
 .class-card {
@@ -320,7 +326,7 @@ import { h } from 'vue';
 
 .class-detail-area {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -330,6 +336,7 @@ import { h } from 'vue';
   border-radius: 12px;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .detail-header {
@@ -344,78 +351,68 @@ import { h } from 'vue';
   font-size: 20px;
 }
 
-/* Chat styles */
-.chat-card {
-  padding: 0;
-  overflow: hidden;
+/* Chat list styles matching Image 1 layout */
+.group-chat-list {
+  background-color: #fafafa;
+  border-radius: 8px;
+  padding: 8px;
 }
 
-.chat-header {
-  padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
+.group-chat-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #f0f0f0 !important;
+}
+
+.group-chat-item:hover {
+  background-color: #f0f0f0;
+}
+
+.group-chat-title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.chat-title {
-  display: flex;
-  align-items: center;
-}
-
-.chat-title h3 {
-  margin: 0;
+.chat-name {
   font-size: 16px;
-}
-
-.chat-messages {
-  flex: 1;
-  padding: 16px;
-  overflow-y: auto;
-  background-color: #f9f9f9;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.chat-bubble-row {
-  display: flex;
-  flex-direction: column;
-  max-width: 70%;
-}
-
-.chat-right {
-  align-self: flex-end;
-  align-items: flex-end;
-}
-
-.chat-left {
-  align-self: flex-start;
-  align-items: flex-start;
-}
-
-.chat-bubble {
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: white;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  word-wrap: break-word;
-}
-
-.chat-right .chat-bubble {
-  background: #1677ff;
-  color: white;
+  font-weight: 500;
+  color: #333;
 }
 
 .chat-time {
-  font-size: 11px;
-  color: #aaa;
+  font-size: 12px;
+  color: #999;
+}
+
+.group-chat-desc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 4px;
 }
 
-.chat-input-area {
-  padding: 16px;
-  border-top: 1px solid #f0f0f0;
-  background: white;
+.chat-last-msg {
+  font-size: 13px;
+  color: #888;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 85%;
+}
+
+.chat-sender {
+  color: #666;
+}
+
+.chat-badge {
+  transform: scale(0.9);
+}
+
+.chat-board-container {
+  flex: 1;
+  height: 100%;
 }
 </style>

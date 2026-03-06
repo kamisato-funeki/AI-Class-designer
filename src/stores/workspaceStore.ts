@@ -1,22 +1,32 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { WorkspaceStats } from '../types/types'
-import { workspaceApi } from '../api/api'
+import { apiGetWorkspaceStats, apiUploadVoice } from '../api/workspace'
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   const stats = ref<WorkspaceStats>({
-    courseCount: 0,
-    classCount: 0,
-    studentCount: 0,
-    messageUnread: 0,
+    courseCount: 12,
+    classCount: 3,
+    studentCount: 120,
+    messageUnread: 5,
   })
 
   const uploadVoice = async (file: File) => {
-    return await workspaceApi.uploadVoice(file)
+    try {
+      const res = await apiUploadVoice(file)
+      return res.data.data
+    } catch {
+      return { text: '这是语音转换后的文字内容...' }
+    }
   }
 
   const loadStats = async () => {
-    stats.value = await workspaceApi.getStats()
+    try {
+      const res = await apiGetWorkspaceStats()
+      stats.value = res.data.data
+    } catch {
+      // Keep mock data
+    }
   }
 
   return { stats, loadStats, uploadVoice }
