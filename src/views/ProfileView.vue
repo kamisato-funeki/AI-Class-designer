@@ -223,7 +223,7 @@ const handleLogout = () => {
 }
 
 .user-role {
-  color: var(--color-text-sub-light, #8c8c8c);
+  color: var(--app-text-sub);
   margin-bottom: 0;
 }
 
@@ -239,7 +239,7 @@ const handleLogout = () => {
 }
 
 .info-row .label {
-  color: var(--color-text-sub-light, #8c8c8c);
+  color: var(--app-text-sub);
   flex-shrink: 0;
   margin-right: 16px;
 }
@@ -252,7 +252,7 @@ const handleLogout = () => {
 .bio-text {
   max-width: 200px;
   word-break: break-all;
-  color: var(--color-text-main, #333);
+  color: var(--app-text-main);
 }
 
 .action-buttons {
@@ -272,6 +272,6 @@ const handleLogout = () => {
 
 .class-info {
   margin: 0 0 8px 0;
-  color: var(--color-text-sub-light, #8c8c8c);
+  color: var(--app-text-sub);
 }
 </style>

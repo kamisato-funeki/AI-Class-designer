@@ -29,13 +29,8 @@
               <a-input v-model:value="formState.phone" placeholder="请输入手机号" class="auth-input" />
             </a-form-item>
             <a-form-item>
-              <a-input-search
-                v-model:value="formState.code"
-                placeholder="请输入验证码"
-                enter-button="获取验证码"
-                size="large"
-                class="auth-input"
-              />
+              <a-input-search v-model:value="formState.code" placeholder="请输入验证码" enter-button="获取验证码" size="large"
+                class="auth-input" />
             </a-form-item>
             <a-form-item>
               <a-button type="primary" block size="large" @click="handleLogin" class="login-btn">
@@ -75,7 +70,7 @@ const handleLogin = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-background-light);
+  background: var(--app-bg);
 }
 
 .login-card {
@@ -84,6 +79,7 @@ const handleLogin = () => {
   padding: 32px 16px;
   border-radius: 16px;
   box-shadow: var(--shadow-xl);
+  background: var(--app-panel);
 }
 
 .login-header {
@@ -108,22 +104,23 @@ const handleLogin = () => {
 .welcome-text {
   font-size: 24px;
   font-weight: 600;
-  color: var(--color-text-main-light);
+  color: var(--app-text-main);
   margin-bottom: 8px;
 }
 
 .sub-text {
-  color: var(--color-text-sub-light);
+  color: var(--app-text-sub);
 }
 
 .auth-input {
   /* Minimal bottom border style as per design doc */
   border: none;
-  border-bottom: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--app-border);
   border-radius: 0;
   padding: 12px 0;
   box-shadow: none !important;
   background: transparent;
+  color: var(--app-text-main);
 }
 
 .auth-input:focus,
@@ -138,6 +135,7 @@ const handleLogin = () => {
 }
 
 .login-btn:hover {
-  background-color: #16a34a !important; /* Tailwind green-600 eq */
+  background-color: #16a34a !important;
+  /* Tailwind green-600 eq */
 }
 </style>

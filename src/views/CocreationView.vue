@@ -1,6 +1,6 @@
 <template>
   <div class="cocreation-container">
-    <splitpanes >
+    <splitpanes>
       <!-- Left Column: AI Dialogue Area (35%) -->
       <pane min-size="20" size="35" class="dialogue-area">
         <div class="chat-history" ref="chatHistoryRef">
@@ -534,7 +534,7 @@ const handleSaveEdit = () => {
 
 :deep(.splitpanes--vertical > .splitpanes__splitter) {
   min-width: 6px;
-  background-color: var(--color-border-light);
+  background-color: var(--app-border);
   cursor: col-resize;
   transition: background-color 0.2s;
 }
@@ -545,7 +545,7 @@ const handleSaveEdit = () => {
 
 /* Left Area: 35% */
 .dialogue-area {
-  background: white;
+  background: var(--app-panel);
   display: flex;
   flex-direction: column;
 }
@@ -596,16 +596,16 @@ const handleSaveEdit = () => {
 }
 
 .chat-bubble.user {
-  background-color: var(--color-background-light);
+  background-color: var(--app-bg);
   border: 1px solid var(--color-primary);
-  color: var(--color-text-main-light);
+  color: var(--app-text-main);
   border-top-right-radius: 4px;
 }
 
 .chat-bubble.assistant {
-  background-color: #F8FAFC;
-  border: 1px solid var(--color-border-light);
-  color: var(--color-text-main-light);
+  background-color: var(--app-hover);
+  border: 1px solid var(--app-border);
+  color: var(--app-text-main);
   border-top-left-radius: 4px;
 }
 
@@ -622,12 +622,12 @@ const handleSaveEdit = () => {
 }
 
 .action-btn {
-  color: var(--color-text-sub-light);
+  color: var(--app-text-sub);
 }
 
 .action-btn:hover {
   color: var(--color-primary);
-  background-color: var(--color-background-light);
+  background-color: var(--app-bg);
 }
 
 .summary-card {
@@ -640,8 +640,8 @@ const handleSaveEdit = () => {
 
 .chat-input-area {
   padding: 16px;
-  border-top: 1px solid var(--color-border-light);
-  background: white;
+  border-top: 1px solid var(--app-border);
+  background: var(--app-panel);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -689,9 +689,9 @@ const handleSaveEdit = () => {
   justify-content: center;
   width: 60px;
   height: 60px;
-  border: 1px solid var(--color-border-light);
+  border: 1px solid var(--app-border);
   border-radius: 6px;
-  background: var(--color-background-light);
+  background: var(--app-bg);
   overflow: hidden;
   padding: 4px;
 }
@@ -718,7 +718,7 @@ const handleSaveEdit = () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--color-text-sub-light);
+  color: var(--app-text-sub);
 }
 
 .file-delete-mask {
@@ -744,15 +744,15 @@ const handleSaveEdit = () => {
 
 /* Right Area: 65% */
 .render-area {
-  background: var(--color-background-light);
+  background: var(--app-bg);
   display: flex;
   flex-direction: column;
 }
 
 .render-header {
   padding: 0 24px;
-  background: white;
-  border-bottom: 1px solid var(--color-border-light);
+  background: var(--app-panel);
+  border-bottom: 1px solid var(--app-border);
 }
 
 .render-content {
@@ -767,10 +767,10 @@ const handleSaveEdit = () => {
 .skeleton-wrapper {
   width: 100%;
   max-width: 800px;
-  background: white;
+  background: var(--app-panel);
   padding: 32px;
   border-radius: 12px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--app-shadow);
 }
 
 .preview-wrapper {
@@ -785,8 +785,8 @@ const handleSaveEdit = () => {
   width: 800px;
   max-width: 100%;
   aspect-ratio: 16/9;
-  background: white;
-  box-shadow: var(--shadow-md);
+  background: var(--app-panel);
+  box-shadow: var(--app-shadow);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -797,22 +797,22 @@ const handleSaveEdit = () => {
 
 .board-prompt-area {
   padding: 12px 24px;
-  background: white;
-  border-top: 1px solid var(--color-border-light);
+  background: var(--app-panel);
+  border-top: 1px solid var(--app-border);
 }
 
 .render-footer {
   padding: 16px 24px;
-  background: white;
-  border-top: 1px solid var(--color-border-light);
+  background: var(--app-panel);
+  border-top: 1px solid var(--app-border);
   text-align: right;
 }
 
 .mock-editor-toolbar {
-  background: white;
+  background: var(--app-panel);
   padding: 8px 16px;
-  border-bottom: 1px solid var(--color-border-light);
-  box-shadow: var(--shadow-sm);
+  border-bottom: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow);
   z-index: 10;
 }
 
@@ -825,12 +825,12 @@ const handleSaveEdit = () => {
 }
 
 .mock-page {
-  background: white;
+  background: var(--app-panel);
   width: 21cm;
   /* A4 width */
   min-height: 29.7cm;
   /* A4 height */
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--app-shadow);
   padding: 96px;
   border-radius: 4px;
   outline: none;

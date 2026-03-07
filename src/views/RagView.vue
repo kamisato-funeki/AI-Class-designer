@@ -228,7 +228,7 @@ const columns = [
 }
 
 .table-area {
-  background: white;
+  background: var(--app-panel);
   border-radius: 12px;
   padding: 24px;
 }

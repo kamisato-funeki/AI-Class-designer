@@ -162,16 +162,16 @@ const saveProfile = async () => {
 
 .settings-layout {
   display: flex;
-  background: white;
+  background: var(--app-panel);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--app-shadow);
   min-height: 600px;
 }
 
 .settings-menu {
   width: 200px;
-  border-right: 1px solid var(--color-border-light);
+  border-right: 1px solid var(--app-border);
   padding: 16px 0;
 }
 
@@ -200,7 +200,7 @@ const saveProfile = async () => {
 
 .setting-info p {
   margin: 0;
-  color: var(--color-text-sub-light);
+  color: var(--app-text-sub);
   font-size: 14px;
 }
 </style>

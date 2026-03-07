@@ -72,7 +72,7 @@ const activeTab = ref('drafts');
 }
 
 .bg-white-tabs {
-  background: white;
+  background: var(--app-panel);
   padding: 0 24px 24px 24px;
   border-radius: 12px;
   min-height: 500px;
@@ -86,11 +86,11 @@ const activeTab = ref('drafts');
 
 .cover-draft {
   height: 140px;
-  background: #F3F4F6;
+  background: var(--app-hover);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9CA3AF;
+  color: var(--app-text-sub);
 }
 
 .progress-bar {
@@ -99,7 +99,7 @@ const activeTab = ref('drafts');
 
 .progress-text {
   font-size: 12px;
-  color: var(--color-text-sub-light);
+  color: var(--app-text-sub);
   margin-bottom: 4px;
   display: block;
 }
@@ -115,7 +115,7 @@ const activeTab = ref('drafts');
 
 .cover-template {
   height: 150px;
-  background: #ECFEFF;
+  background: rgba(8, 145, 178, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;

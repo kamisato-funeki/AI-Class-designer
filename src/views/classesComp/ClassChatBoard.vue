@@ -59,8 +59,8 @@
     </div>
 
     <!-- Input Area with Drag & Drop -->
-    <div class="chat-input-area" @dragenter.prevent="isDragging = true" @dragover.prevent="isDragging = true"
-      @dragleave.prevent="isDragging = false" @drop.prevent="handleDrop">
+    <div class="chat-input-area" @dragenter.prevent="handleDragEnter" @dragover.prevent
+      @dragleave.prevent="handleDragLeave" @drop.prevent="handleDrop">
       <!-- Drag Mask -->
       <div class="drag-mask" v-if="isDragging">
         <div class="drag-hint">
@@ -133,6 +133,7 @@ const chatScrollRef = ref<HTMLElement | null>(null);
 
 // Drag & Drop State
 const isDragging = ref(false);
+const dragCounter = ref(0);
 const fileInput = ref<HTMLInputElement | null>(null);
 const imageInput = ref<HTMLInputElement | null>(null);
 
@@ -196,7 +197,20 @@ const handleFileSelected = (e: Event) => {
   target.value = ''; // reset
 };
 
+const handleDragEnter = () => {
+  dragCounter.value++;
+  isDragging.value = true;
+};
+
+const handleDragLeave = () => {
+  dragCounter.value--;
+  if (dragCounter.value === 0) {
+    isDragging.value = false;
+  }
+};
+
 const handleDrop = (e: DragEvent) => {
+  dragCounter.value = 0;
   isDragging.value = false;
   if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
     processFiles(e.dataTransfer.files);
@@ -241,12 +255,12 @@ const handleSend = async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: rgb(186, 186, 186);
-  /* Bright Mode */
-  color: var(--color-text-main-light);
+  background-color: var(--app-bg);
+  color: var(--app-text-main);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--app-shadow);
+  border: 1px solid var(--app-border);
 }
 
 .chat-header {
@@ -254,8 +268,8 @@ const handleSend = async () => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--color-border-light);
-  background-color: var(--color-panel-light-2);
+  border-bottom: 1px solid var(--app-border);
+  background-color: var(--app-panel);
 }
 
 .chat-title {
@@ -264,7 +278,7 @@ const handleSend = async () => {
 }
 
 .back-btn {
-  color: var(--color-text-sub-light);
+  color: var(--app-text-sub);
   margin-right: 12px;
   padding: 0;
 }
@@ -276,13 +290,13 @@ const handleSend = async () => {
 .chat-title h3 {
   margin: 0;
   font-size: 16px;
-  color: var(--color-text-main-light);
+  color: var(--app-text-main);
   font-weight: 500;
 }
 
 .member-count {
   font-size: 14px;
-  color: var(--color-text-sub-light);
+  color: var(--app-text-sub);
   font-weight: normal;
 }
 
@@ -293,8 +307,7 @@ const handleSend = async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background-color: var(--color-panel-light-3);
-  /* Slight contrast for bubbles */
+  background-color: var(--app-bg);
 }
 
 .time-divider {
@@ -303,8 +316,8 @@ const handleSend = async () => {
 }
 
 .time-divider span {
-  background-color: #e5e7eb;
-  color: #6b7280;
+  background-color: var(--app-hover);
+  color: var(--app-text-sub);
   padding: 2px 10px;
   border-radius: 12px;
   font-size: 11px;
@@ -350,7 +363,6 @@ const handleSend = async () => {
 
 .user-level {
   color: #f59e0b;
-  /* Bright mode distinctive color */
   font-weight: bold;
 }
 
@@ -359,7 +371,7 @@ const handleSend = async () => {
 }
 
 .user-name {
-  color: #6b7280;
+  color: var(--app-text-sub);
 }
 
 .bubble-wrapper {
@@ -369,17 +381,17 @@ const handleSend = async () => {
 .chat-bubble {
   padding: 10px 14px;
   border-radius: 8px;
-  background-color: #ffffff;
-  color: #1f2937;
+  background-color: var(--app-panel);
+  color: var(--app-text-main);
   font-size: 14px;
   line-height: 1.5;
   word-wrap: break-word;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f3f4f6;
+  box-shadow: var(--app-shadow);
+  border: 1px solid var(--app-border);
 }
 
 .message-row.send .chat-bubble {
-  background-color: #1677ff;
+  background-color: var(--color-primary);
   color: #ffffff;
   border: none;
 }
@@ -444,11 +456,11 @@ const handleSend = async () => {
 
 /* Input Area */
 .chat-input-area {
-  border-top: 1px solid var(--color-border-light);
+  border-top: 1px solid var(--app-border);
   padding: 12px 20px 20px;
   display: flex;
   flex-direction: column;
-  background-color: var(--color-panel-light-2);
+  background-color: var(--app-panel);
   position: relative;
 }
 
@@ -458,18 +470,20 @@ const handleSend = async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: var(--app-panel);
+  opacity: 0.95;
   z-index: 10;
-  border: 2px dashed #1677ff;
+  border: 2px dashed var(--color-primary);
   border-radius: 0 0 12px 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 
 .drag-hint {
   text-align: center;
-  color: #1677ff;
+  color: var(--color-primary);
   font-size: 16px;
   font-weight: 500;
   pointer-events: none;
@@ -480,7 +494,7 @@ const handleSend = async () => {
   gap: 12px;
   padding: 8px 0;
   margin-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--app-border);
   overflow-x: auto;
 }
 
@@ -489,8 +503,8 @@ const handleSend = async () => {
   width: 64px;
   height: 64px;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border: 1px solid var(--app-border);
+  background: var(--app-hover);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -529,7 +543,7 @@ const handleSend = async () => {
 
 .pf-filename {
   font-size: 10px;
-  color: #666;
+  color: var(--app-text-sub);
   width: 56px;
   white-space: nowrap;
   overflow: hidden;
@@ -547,13 +561,13 @@ const handleSend = async () => {
 
 .toolbar-icon {
   font-size: 20px;
-  color: #9ca3af;
+  color: var(--app-text-sub);
   cursor: pointer;
   transition: color 0.2s;
 }
 
 .toolbar-icon:hover {
-  color: #1677ff;
+  color: var(--color-primary);
 }
 
 
@@ -562,7 +576,7 @@ const handleSend = async () => {
 }
 
 .chat-textarea {
-  color: #1f2937 !important;
+  color: var(--app-text-main) !important;
   font-size: 18px;
   padding: 0;
   resize: none;
@@ -570,7 +584,7 @@ const handleSend = async () => {
 }
 
 .chat-textarea::placeholder {
-  color: #9ca3af;
+  color: var(--app-text-sub);
   font-size: 14px;
 }
 

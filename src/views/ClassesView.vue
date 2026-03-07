@@ -7,107 +7,107 @@
 
       <div class="content-split">
         <!-- Left: Class List -->
-        <div class="class-list-area">
-          <div class="class-list-scroll">
-            <a-card hoverable class="class-card" size="small" v-for="cls in classesStore.classes" :key="cls.id"
-              :class="{ active: classesStore.currentClass?.id === cls.id }" @click="handleClassSwitch(cls.id)">
-              <template #title>
-                <span style="font-size: 15px;">{{ cls.name }}</span>
-              </template>
-              <template #extra>
-                <a-badge :count="`${cls.studentCount}人`"
-                  :number-style="{ backgroundColor: 'var(--color-background-light)', color: 'var(--color-text-main-light)' }" />
-              </template>
-              <p style="margin: 0; color: gray;font-size: 10px;">创立: {{ cls.createTime.split(' ')[0] }}</p>
-            </a-card>
+          <div class="class-list-area">
+            <div class="class-list-scroll">
+              <a-card hoverable class="class-card" size="small" v-for="cls in classesStore.classes" :key="cls.id"
+                :class="{ active: classesStore.currentClass?.id === cls.id }" @click="handleClassSwitch(cls.id)">
+                <template #title>
+                  <span style="font-size: 15px;">{{ cls.name }}</span>
+                </template>
+                <template #extra>
+                  <a-badge :count="`${cls.studentCount}人`"
+                    :number-style="{ backgroundColor: 'var(--color-background-light)', color: 'var(--color-text-main-light)' }" />
+                </template>
+                <p style="margin: 0; color: gray;font-size: 10px;">创立: {{ cls.createTime.split(' ')[0] }}</p>
+              </a-card>
+            </div>
+            <div class="class-list-footer">
+              <a-button type="primary" block @click="createClassVisible = true">新建班级</a-button>
+            </div>
           </div>
-          <div class="class-list-footer">
-            <a-button type="primary" block @click="createClassVisible = true">新建班级</a-button>
-          </div>
-        </div>
 
         <!-- Right: Class Details -->
-        <div class="class-detail-area" v-if="classesStore.currentClass">
-          <a-card :bordered="false" class="detail-card" v-show="!classesStore.activeGroupChat">
-            <div class="detail-header">
-              <h3>{{ classesStore.currentClass.name }} - 详情面板</h3>
-              <a-space>
-                <a-button type="primary" @click="openCreateTask('material')">发布课件</a-button>
-                <a-button @click="openCreateTask('homework')">布置作业</a-button>
-                <a-button @click="openCreateTask('discussion')">发起讨论</a-button>
-              </a-space>
+          <div class="class-detail-area" v-if="classesStore.currentClass">
+            <a-card :bordered="false" class="detail-card" v-show="!classesStore.activeGroupChat">
+              <div class="detail-header">
+                <h3>{{ classesStore.currentClass.name }} - 详情面板</h3>
+                <a-space>
+                  <a-button type="primary" @click="openCreateTask('material')">发布课件</a-button>
+                  <a-button @click="openCreateTask('homework')">布置作业</a-button>
+                  <a-button @click="openCreateTask('discussion')">发起讨论</a-button>
+                </a-space>
+              </div>
+
+              <a-tabs v-model:activeKey="activeTab">
+                <a-tab-pane key="students" tab="学生名单">
+                  <a-table :dataSource="classesStore.students" :columns="studentColumns" size="small"
+                    :pagination="{ pageSize: 8 }">
+                    <template #bodyCell="{ column, record }">
+                      <template v-if="column.key === 'action'">
+                        <a-space>
+                          <a-button type="link" size="small" @click="openStudentDetails(record)">详情</a-button>
+                        </a-space>
+                      </template>
+                    </template>
+                  </a-table>
+                </a-tab-pane>
+                <a-tab-pane key="schedule" tab="课程表">
+                  <a-table :dataSource="classesStore.currentSchedule" :columns="scheduleColumns" size="small"
+                    :pagination="false" bordered />
+                </a-tab-pane>
+                <a-tab-pane key="dynamics" tab="班级动态">
+                  <a-timeline>
+                    <a-timeline-item v-for="task in classesStore.currentTasks" :key="task.id"
+                      :color="task.type === 'homework' ? 'blue' : 'green'">
+                      发布了{{ task.type === 'homework' ? '作业' : task.type === 'discussion' ? '讨论' : '课件' }}：《{{ task.title
+                      }}》
+                      <div style="font-size: 12px; color: gray; margin-top: 4px;">{{ task.createTime }}</div>
+                    </a-timeline-item>
+                    <a-timeline-item color="gray">班级创建完成</a-timeline-item>
+                  </a-timeline>
+                </a-tab-pane>
+                <a-tab-pane key="chats" tab="班级消息">
+                  <a-list item-layout="horizontal" :data-source="classesStore.groupChats" class="group-chat-list">
+                    <template #renderItem="{ item }">
+                      <a-list-item class="group-chat-item" @click="handleOpenGroupChat(item)">
+                        <a-list-item-meta>
+                          <template #avatar>
+                            <a-avatar :src="item.avatar" :size="48" style="border-radius: 50%;" />
+                          </template>
+                          <template #title>
+                            <div class="group-chat-title-row">
+                              <span class="chat-name">{{ item.name }}</span>
+                              <span class="chat-time">{{ item.lastMessageTime }}</span>
+                            </div>
+                          </template>
+                          <template #description>
+                            <div class="group-chat-desc-row">
+                              <span class="chat-last-msg">
+                                <span v-if="item.lastSender" class="chat-sender">{{ item.lastSender }}: </span>
+                                {{ item.lastMessage }}
+                              </span>
+                              <a-badge v-if="item.unreadCount > 0"
+                                :count="item.unreadCount > 99 ? '99+' : item.unreadCount" class="chat-badge" />
+                            </div>
+                          </template>
+                        </a-list-item-meta>
+                      </a-list-item>
+                    </template>
+                  </a-list>
+                </a-tab-pane>
+              </a-tabs>
+            </a-card>
+
+            <!-- Group Chat 面板 -->
+            <div class="chat-board-container" v-if="classesStore.activeGroupChat">
+              <ClassChatBoard @back="classesStore.activeGroupChat = null" />
             </div>
 
-            <a-tabs v-model:activeKey="activeTab">
-              <a-tab-pane key="students" tab="学生名单">
-                <a-table :dataSource="classesStore.students" :columns="studentColumns" size="small"
-                  :pagination="{ pageSize: 8 }">
-                  <template #bodyCell="{ column, record }">
-                    <template v-if="column.key === 'action'">
-                      <a-space>
-                        <a-button type="link" size="small" @click="openStudentDetails(record)">详情</a-button>
-                      </a-space>
-                    </template>
-                  </template>
-                </a-table>
-              </a-tab-pane>
-              <a-tab-pane key="schedule" tab="课程表">
-                <a-table :dataSource="classesStore.currentSchedule" :columns="scheduleColumns" size="small"
-                  :pagination="false" bordered />
-              </a-tab-pane>
-              <a-tab-pane key="dynamics" tab="班级动态">
-                <a-timeline>
-                  <a-timeline-item v-for="task in classesStore.currentTasks" :key="task.id"
-                    :color="task.type === 'homework' ? 'blue' : 'green'">
-                    发布了{{ task.type === 'homework' ? '作业' : task.type === 'discussion' ? '讨论' : '课件' }}：《{{ task.title
-                    }}》
-                    <div style="font-size: 12px; color: gray; margin-top: 4px;">{{ task.createTime }}</div>
-                  </a-timeline-item>
-                  <a-timeline-item color="gray">班级创建完成</a-timeline-item>
-                </a-timeline>
-              </a-tab-pane>
-              <a-tab-pane key="chats" tab="班级消息">
-                <a-list item-layout="horizontal" :data-source="classesStore.groupChats" class="group-chat-list">
-                  <template #renderItem="{ item }">
-                    <a-list-item class="group-chat-item" @click="handleOpenGroupChat(item)">
-                      <a-list-item-meta>
-                        <template #avatar>
-                          <a-avatar :src="item.avatar" :size="48" style="border-radius: 50%;" />
-                        </template>
-                        <template #title>
-                          <div class="group-chat-title-row">
-                            <span class="chat-name">{{ item.name }}</span>
-                            <span class="chat-time">{{ item.lastMessageTime }}</span>
-                          </div>
-                        </template>
-                        <template #description>
-                          <div class="group-chat-desc-row">
-                            <span class="chat-last-msg">
-                              <span v-if="item.lastSender" class="chat-sender">{{ item.lastSender }}: </span>
-                              {{ item.lastMessage }}
-                            </span>
-                            <a-badge v-if="item.unreadCount > 0"
-                              :count="item.unreadCount > 99 ? '99+' : item.unreadCount" class="chat-badge" />
-                          </div>
-                        </template>
-                      </a-list-item-meta>
-                    </a-list-item>
-                  </template>
-                </a-list>
-              </a-tab-pane>
-            </a-tabs>
-          </a-card>
-
-          <!-- Group Chat 面板 -->
-          <div class="chat-board-container" v-if="classesStore.activeGroupChat">
-            <ClassChatBoard @back="classesStore.activeGroupChat = null" />
           </div>
-
-        </div>
-        <div v-else
-          style="flex: 1; display: flex; align-items: center; justify-content: center; background: white; border-radius: 12px;">
-          <a-empty description="请选择或创建班级" />
-        </div>
+          <div v-else
+          style="flex: 1; display: flex; align-items: center; justify-content: center; background: var(--app-panel); border-radius: 12px;">
+            <a-empty description="请选择或创建班级" />
+          </div>
       </div>
     </div>
 
@@ -272,7 +272,7 @@ import { h } from 'vue';
   display: flex;
   flex-direction: column;
   gap: 24px;
-  height: calc(100vh - 64px - 48px);
+  height: calc(100vh - 120px - 48px);
 }
 
 .page-header {
@@ -320,8 +320,8 @@ import { h } from 'vue';
 
 .class-card.active {
   border-color: var(--color-primary);
-  box-shadow: var(--shadow-sm);
-  background-color: var(--color-background-light);
+  box-shadow: var(--app-shadow);
+  background-color: var(--app-bg);
 }
 
 .class-detail-area {
@@ -353,7 +353,7 @@ import { h } from 'vue';
 
 /* Chat list styles matching Image 1 layout */
 .group-chat-list {
-  background-color: #fafafa;
+  background-color: var(--app-bg);
   border-radius: 8px;
   padding: 8px;
 }
@@ -363,11 +363,11 @@ import { h } from 'vue';
   cursor: pointer;
   border-radius: 8px;
   transition: background-color 0.2s;
-  border-bottom: 1px solid #f0f0f0 !important;
+  border-bottom: 1px solid var(--app-border) !important;
 }
 
 .group-chat-item:hover {
-  background-color: #f0f0f0;
+  background-color: var(--app-hover);
 }
 
 .group-chat-title-row {
@@ -379,12 +379,12 @@ import { h } from 'vue';
 .chat-name {
   font-size: 16px;
   font-weight: 500;
-  color: #333;
+  color: var(--app-text-main);
 }
 
 .chat-time {
   font-size: 12px;
-  color: #999;
+  color: var(--app-text-sub);
 }
 
 .group-chat-desc-row {
@@ -396,7 +396,7 @@ import { h } from 'vue';
 
 .chat-last-msg {
   font-size: 13px;
-  color: #888;
+  color: var(--app-text-sub);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -404,7 +404,7 @@ import { h } from 'vue';
 }
 
 .chat-sender {
-  color: #666;
+  color: var(--app-text-sub);
 }
 
 .chat-badge {

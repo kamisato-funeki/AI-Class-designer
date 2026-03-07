@@ -338,11 +338,11 @@ const options2 = [
 
 .input-core {
   position: relative;
-  background: white;
+  background: var(--app-panel);
   border-radius: 16px;
   padding: 16px;
   box-shadow: var(--shadow-md);
-  border: 1px solid var(--color-border-light);
+  border: 1px solid var(--app-border);
   transition: all 0.3s;
 }
 
@@ -381,9 +381,9 @@ const options2 = [
   justify-content: center;
   width: 80px;
   height: 80px;
-  border: 1px solid var(--color-border-light);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: var(--color-background-light);
+  background: var(--app-bg);
   overflow: hidden;
   padding: 8px;
 }
@@ -410,7 +410,7 @@ const options2 = [
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--color-text-sub-light);
+  color: var(--app-text-sub);
 }
 
 .file-delete-mask {

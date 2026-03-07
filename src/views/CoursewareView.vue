@@ -205,7 +205,7 @@ const handleRemoveTag = (id: string, tag: string) => {
 .filter-bar {
   display: flex;
   align-items: center;
-  background: white;
+  background: var(--app-panel);
   padding: 16px;
   border-radius: 12px;
 }
@@ -219,6 +219,8 @@ const handleRemoveTag = (id: string, tag: string) => {
 .cw-card {
   border-radius: 12px;
   overflow: hidden;
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
 }
 
 .cover-img {
@@ -241,14 +243,14 @@ const handleRemoveTag = (id: string, tag: string) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: var(--color-text-sub-light);
+  color: var(--app-text-sub);
   font-size: 13px;
-  border-top: 1px solid var(--color-border-light);
+  border-top: 1px solid var(--app-border);
   padding-top: 12px;
 }
 
 .list-view {
-  background: white;
+  background: var(--app-panel);
   padding: 24px;
   border-radius: 12px;
 }

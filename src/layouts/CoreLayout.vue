@@ -6,7 +6,7 @@
     <!-- Sidebar -->
     <a-layout-sider v-model:collapsed="collapsed" :trigger="null" collapsible :collapsed-width="isMobile ? 0 : 80"
       theme="light" :class="{ 'mobile-sider': isMobile }"
-      :style="{ borderRight: '1px solid var(--color-border-light)', zIndex: 10 }">
+      :style="{ borderRight: '1px solid var(--app-border)', zIndex: 10 }">
       <div class="logo-container">
         <div class="logo-icon">ACD</div>
         <span v-if="!collapsed" class="logo-text">Class Designer</span>
@@ -95,9 +95,17 @@
     <!-- Main Content -->
     <a-layout>
       <a-layout-header
-        :style="{ background: 'var(--color-background-light)', padding: isMobile ? '0 16px' : '0 24px', display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)' }">
+        :style="{ background: 'var(--app-bg)', padding: isMobile ? '0 16px' : '0 24px', display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--app-border)' }">
         <menu-unfold-outlined v-if="collapsed" class="trigger" @click="() => (collapsed = !collapsed)" />
         <menu-fold-outlined v-else class="trigger" @click="() => (collapsed = !collapsed)" />
+
+        <a-tooltip :title="settingsStore.theme === 'dark' ? '点击切换明亮模式' : '点击切换黑暗模式'" placement="bottom">
+          <div class="header-action-btn"
+            @click="settingsStore.toggleTheme(settingsStore.theme === 'dark' ? 'light' : 'dark')">
+            <BulbOutlined />
+          </div>
+        </a-tooltip>
+
         <div style="flex: 1"></div>
         <!-- Right side header items like user avatar can go here -->
         <div class="header-actions">
@@ -134,7 +142,7 @@
       <a-layout-content :style="{
         margin: isMobile ? '16px 12px' : '24px 16px',
         padding: isMobile ? '16px' : '24px',
-        background: 'var(--color-panel-light)',
+        background: 'var(--app-panel)',
         minHeight: '280px',
         borderRadius: '12px',
         overflow: 'auto'
@@ -186,14 +194,17 @@ import {
   BellOutlined,
   MenuUnfoldOutlined,
   MenuFoldOutlined,
-  PlusOutlined
+  PlusOutlined,
+  BulbOutlined
 } from '@ant-design/icons-vue';
 import { useUserStore } from '../stores/userStore';
 import { useCoursewareStore } from '../stores/coursewareStore';
+import { useSettingsStore } from '../stores/settingsStore';
 
 const router = useRouter();
 const userStore = useUserStore();
 const coursewareStore = useCoursewareStore();
+const settingsStore = useSettingsStore();
 const collapsed = ref<boolean>(false);
 const selectedKeys = ref<string[]>(['workspace']);
 const newCourseModalVisible = ref<boolean>(false);
@@ -310,7 +321,7 @@ const createNewCourse = async () => {
   margin-left: 12px;
   font-weight: 600;
   font-size: 16px;
-  color: var(--color-text-main-light);
+  color: var(--app-text-main);
   white-space: nowrap;
 }
 
@@ -318,10 +329,29 @@ const createNewCourse = async () => {
   font-size: 18px;
   cursor: pointer;
   transition: color 0.3s;
+  color: var(--app-text-main);
 }
 
 .trigger:hover {
   color: var(--color-primary);
+}
+
+.header-action-btn {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  transition: background-color 0.3s;
+  margin-left: 16px;
+  color: var(--app-text-main);
+  font-size: 18px;
+}
+
+.header-action-btn:hover {
+  background-color: var(--app-hover);
 }
 
 .menu-container {

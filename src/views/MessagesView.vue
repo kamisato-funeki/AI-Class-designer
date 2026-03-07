@@ -20,7 +20,7 @@
                     <div class="msg-title">
                       <a-badge v-if="!item.isRead" dot :offset="[-10, 5]" />
                       <span class="title-text">{{ item.senderName }} {{ item.type === 'system' ? '发来一条通知' : '发来一条消息'
-                      }}</span>
+                        }}</span>
                       <span class="time-badge">{{ item.createTime }}</span>
                     </div>
                   </template>
@@ -162,7 +162,7 @@ const markAsRead = async (id: string) => {
 }
 
 .bg-white-tabs {
-  background: white;
+  background: var(--app-panel);
   padding: 0 24px 24px 24px;
   border-radius: 12px;
   min-height: 500px;
@@ -176,7 +176,7 @@ const markAsRead = async (id: string) => {
 }
 
 .message-item:hover {
-  background-color: var(--color-hover-light);
+  background-color: var(--app-hover);
 }
 
 .message-item.read {
@@ -196,7 +196,7 @@ const markAsRead = async (id: string) => {
 
 .time-badge {
   font-size: 12px;
-  color: var(--color-text-sub-light);
+  color: var(--app-text-sub);
   font-weight: normal;
 }
 </style>
