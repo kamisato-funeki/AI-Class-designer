@@ -77,7 +77,7 @@
 
     <!-- Quick Access Sections -->
     <div class="dashboard-grid">
-      <div><!-- Recent Coursewares -->
+      <div style="display: flex;flex-direction: column;gap: 20px;"><!-- Recent Coursewares -->
         <div class="section-card">
           <div class="section-header">
             <h3>常用模板</h3>
