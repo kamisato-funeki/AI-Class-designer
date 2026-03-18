@@ -83,7 +83,7 @@ onMounted(() => {
   // 每5分钟刷新一次 (300000ms)
   rotationTimer = window.setInterval(() => {
     refreshGreeting();
-  }, 300000);
+  }, 30000);
 });
 
 onUnmounted(() => {

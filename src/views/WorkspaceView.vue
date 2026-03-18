@@ -197,7 +197,8 @@ onMounted(() => {
 <style scoped>
 .workspace-wrapper {
   position: relative;
-  height: calc(100vh - 64px);
+  /* height: calc(100vh - 64px); */
+  height: 100%;
   /* assuming top nav is 64px */
   overflow: hidden;
   background-color: var(--app-bg);
@@ -322,7 +323,7 @@ onMounted(() => {
   bottom: -20vh;
   left: 0;
   width: 100%;
-  height: 40vh;
+  height: 60%;
   background: linear-gradient(to bottom, transparent, var(--app-bg) 80%);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
