@@ -1,482 +1,370 @@
 <template>
-  <a-spin :spinning="loading">
-    <div class="workspace-container">
-      <!-- Header Greeting -->
-      <div class="greeting">
-        <h2>早上好，{{ userStore.user?.name || '老师' }}！</h2>
-        <p style="color: var(--color-text-sub-light)">开启下一堂课的精彩旅程</p>
+  <div class="workspace-wrapper">
+    <!-- 动态背景 -->
+    <div class="dynamic-bg">
+      <div v-for="shape in staticShapes" :key="'s'+shape.id" :class="['bg-shape', 'static-shape', shape.type]" :style="shape.style"></div>
+      <div v-for="shape in clickShapes" :key="'c'+shape.id" :class="['bg-shape', 'click-anim', shape.type]" :style="shape.style"></div>
+    </div>
+
+    <!-- 主滚动区域 -->
+    <div class="workspace-scroll-container" @click="handleBgClick" @scroll="handleScroll" ref="scrollContainer">
+      <!-- Top Section (100vh - Header) -> Centered greeting, bottom input -->
+      <div class="hero-section">
+        <div class="hero-content">
+          <GreetingSection />
+        </div>
+        <div class="hero-bottom-input">
+          <InputCore />
+        </div>
+        <!-- 滚动滑出的毛玻璃蒙版 -->
+        <div class="scroll-mask" :style="{ opacity: maskOpacity }"></div>
       </div>
 
-      <!-- Multi-modal input core -->
-      <div class="input-core" @dragenter.prevent="handleDragEnter" @dragover.prevent
-        @dragleave.prevent="handleDragLeave" @drop.prevent="handleDrop">
-        <div v-show="isDragging" class="drag-mask">
-          <span>释放以拖拽上传文件 (word、ppt、pdf、图片)</span>
-        </div>
-        <a-textarea v-model:value="inputValue" placeholder="输入课程主题，或拖拽上传参考文件 (word/ppt/pdf/图片)..." :bordered="false"
-          :auto-size="{ minRows: 4, maxRows: 9 }" class="main-input" />
-
-        <div v-if="uploadedFiles.length > 0" class="file-preview-list">
-          <div v-for="file in uploadedFiles" :key="file.id" class="file-preview-item"
-            :class="{ 'is-image': ['png', 'jpg', 'jpeg', 'gif'].includes(file.type) }">
-            <template v-if="['png', 'jpg', 'jpeg', 'gif'].includes(file.type)">
-              <img :src="file.dataUrl" class="image-preview" />
-            </template>
-            <template v-else>
-              <FileWordOutlined v-if="file.type === 'doc' || file.type === 'docx'"
-                style="color: #1890ff; font-size: 24px" />
-              <FilePptOutlined v-else-if="file.type === 'ppt' || file.type === 'pptx'"
-                style="color: #fa541c; font-size: 24px" />
-              <FilePdfOutlined v-else-if="file.type === 'pdf'" style="color: #ff4d4f; font-size: 24px" />
-              <FileOutlined v-else style="color: #aaa; font-size: 24px" />
-              <div class="file-info">
-                <span class="file-name" :title="file.name">{{ file.name }}</span>
+      <!-- Content Layout -->
+      <div class="dashboard-content">
+        <div class="dashboard-grid">
+          <!-- Left Column: Courseware Stats, etc. (Can extract if needed, but keeping simple) -->
+          <div class="left-col">
+            <!-- 常用模板 -->
+            <div class="section-card">
+              <div class="section-header">
+                <h3>常用模板</h3>
+                <a-button type="link" @click="$router.push('/courseware')">查看全部</a-button>
               </div>
-            </template>
-            <div class="file-delete-mask" @click="removeFile(file.id)">
-              <DeleteOutlined />
+              <div class="course-list">
+                <a-card hoverable class="course-item" v-for="cw in coursewareStore.coursewares.slice(0, 3)"
+                  :key="'tpl' + cw.id" @click="$router.push('/cocreation')">
+                  <template #cover>
+                    <div class="course-cover-placeholder"
+                      :style="{ backgroundImage: `url(${cw.coverImage})`, backgroundSize: 'cover' }">
+                      <div class="cw-tag">{{ cw.subject }}·{{ cw.grade }}</div>
+                    </div>
+                  </template>
+                  <a-card-meta :title="cw.title" :description="`${cw.updateTime} 编辑`" />
+                </a-card>
+                <a-empty v-if="coursewareStore.coursewares.length === 0" description="暂无课件"
+                  style="grid-column: span 3; margin: 24px 0;" />
+              </div>
+            </div>
+
+            <!-- 最近课件 -->
+            <div class="section-card">
+              <div class="section-header">
+                <h3>最近课件</h3>
+                <a-button type="link" @click="$router.push('/courseware')">查看全部</a-button>
+              </div>
+              <div class="course-list">
+                <a-card hoverable class="course-item" v-for="cw in coursewareStore.coursewares.slice(0, 3)"
+                  :key="'cw' + cw.id" @click="$router.push('/cocreation')">
+                  <template #cover>
+                    <div class="course-cover-placeholder"
+                      :style="{ backgroundImage: `url(${cw.coverImage})`, backgroundSize: 'cover' }">
+                      <div class="cw-tag">{{ cw.subject }}·{{ cw.grade }}</div>
+                    </div>
+                  </template>
+                  <a-card-meta :title="cw.title" :description="`${cw.updateTime} 编辑`" />
+                </a-card>
+                <a-empty v-if="coursewareStore.coursewares.length === 0" description="暂无课件"
+                  style="grid-column: span 3; margin: 24px 0;" />
+              </div>
             </div>
           </div>
+
+          <!-- Right Column: Class Dynamics -->
+          <div class="right-col">
+            <ClassDynamicsCard />
+          </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between;">
-          <a-space>
-            <a-tooltip title="语音输入">
-              <a-button shape="circle" size="large" @click="handleVoiceInput" :loading="isRecording">
-                <template #icon>
-                  <AudioOutlined v-if="!isRecording" />
-                </template>
-              </a-button>
-            </a-tooltip>
-            <a-upload :showUploadList="false" :beforeUpload="handleUpload">
-              <a-tooltip title="上传参考文件">
-                <a-button shape="circle" size="large">
-                  <template #icon>
-                    <PaperClipOutlined />
-                  </template>
-                </a-button>
-              </a-tooltip>
-            </a-upload>
-            <a-select v-model:value="subject" show-search placeholder="科目" :options="options"
-              :filter-option="filterOption" style="width: 100px;" size="large">
-            </a-select>
-            <a-select v-model:value="grade" show-search placeholder="年级" :options="options2"
-              :filter-option="filterOption" style="width: 100px;" size="large">
-            </a-select>
-          </a-space>
-          <a-button type="primary" size="large" class="send-btn" @click="handleSend">
-            <template #icon>
-              <SendOutlined />
-            </template>
-            生成课件
-          </a-button>
-        </div>
-
+        <!-- 底部教育新闻 -->
+        <EducationNewsSection />
       </div>
     </div>
 
-    <!-- Quick Access Sections -->
-    <div class="dashboard-grid">
-      <div style="display: flex;flex-direction: column;gap: 20px;"><!-- Recent Coursewares -->
-        <div class="section-card">
-          <div class="section-header">
-            <h3>常用模板</h3>
-            <a-button type="link" @click="$router.push('/courseware')">查看全部</a-button>
-          </div>
-          <div class="course-list">
-            <a-card hoverable class="course-item" v-for="cw in coursewareStore.coursewares.slice(0, 3)" :key="cw.id"
-              @click="router.push('/cocreation')">
-              <template #cover>
-                <div class="course-cover-placeholder"
-                  :style="{ backgroundImage: `url(${cw.coverImage})`, backgroundSize: 'cover' }">
-                  <div style="background: rgba(255,255,255,0.7); padding: 4px 8px; border-radius: 4px;">{{ cw.subject
-                    }}·{{ cw.grade }}</div>
-                </div>
-              </template>
-              <a-card-meta :title="cw.title" :description="`${cw.updateTime} 编辑`">
-              </a-card-meta>
-            </a-card>
-            <a-empty v-if="coursewareStore.coursewares.length === 0" description="暂无课件"
-              style="grid-column: span 3; margin: 24px 0;" />
-          </div>
-        </div>
-
-        <div class="section-card">
-          <div class="section-header">
-            <h3>最近课件</h3>
-            <a-button type="link" @click="$router.push('/courseware')">查看全部</a-button>
-          </div>
-          <div class="course-list">
-            <a-card hoverable class="course-item" v-for="cw in coursewareStore.coursewares.slice(0, 3)" :key="cw.id"
-              @click="router.push('/cocreation')">
-              <template #cover>
-                <div class="course-cover-placeholder"
-                  :style="{ backgroundImage: `url(${cw.coverImage})`, backgroundSize: 'cover' }">
-                  <div style="background: rgba(255,255,255,0.7); padding: 4px 8px; border-radius: 4px;">{{ cw.subject
-                    }}·{{ cw.grade }}</div>
-                </div>
-              </template>
-              <a-card-meta :title="cw.title" :description="`${cw.updateTime} 编辑`">
-              </a-card-meta>
-            </a-card>
-            <a-empty v-if="coursewareStore.coursewares.length === 0" description="暂无课件"
-              style="grid-column: span 3; margin: 24px 0;" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Class Dynamics -->
-      <div class="section-card">
-        <div class="section-header">
-          <h3>班级动态</h3>
-        </div>
-        <a-list item-layout="horizontal" :data-source="dynamics">
-          <template #renderItem="{ item }">
-            <a-list-item>
-              <a-list-item-meta :description="item.time">
-                <template #title>
-                  <a-popover :title="item.title" trigger="hover" placement="left">
-                    <template #content>
-                      <p>{{ item.description }}</p>
-                      <a-button type="link" size="small" @click="router.push('/classes')">前往查看</a-button>
-                    </template>
-                    <a style="cursor: pointer;">{{ item.title }}</a>
-                  </a-popover>
-                </template>
-                <template #avatar>
-                  <a-avatar style="background-color: var(--color-primary)">
-                    <UserOutlined />
-                  </a-avatar>
-                </template>
-              </a-list-item-meta>
-            </a-list-item>
-          </template>
-        </a-list>
-      </div>
-
-
-
-    </div>
-  </a-spin>
+    <!-- 悬浮回到顶部 -->
+    <a-button v-show="showBackTop" class="back-top-btn" type="primary" shape="circle" size="large" @click="scrollToTop">
+      <template #icon>
+        <UpOutlined />
+      </template>
+    </a-button>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { message } from 'ant-design-vue';
-import {
-  AudioOutlined,
-  PaperClipOutlined,
-  SendOutlined,
-  UserOutlined,
-  FileWordOutlined,
-  FilePdfOutlined,
-  FilePptOutlined,
-  FileOutlined,
-  DeleteOutlined
-} from '@ant-design/icons-vue';
-import { v4 as uuidv4 } from 'uuid';
-import { useUserStore } from '../stores/userStore';
+import { UpOutlined } from '@ant-design/icons-vue';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useCoursewareStore } from '../stores/coursewareStore';
 
-const router = useRouter();
-const userStore = useUserStore();
+import GreetingSection from './workSpaceComp/GreetingSection.vue';
+import InputCore from './workSpaceComp/InputCore.vue';
+import ClassDynamicsCard from './workSpaceComp/ClassDynamicsCard.vue';
+import EducationNewsSection from './workSpaceComp/EducationNewsSection.vue';
+
 const workspaceStore = useWorkspaceStore();
 const coursewareStore = useCoursewareStore();
 
-const loading = ref(true);
-const inputValue = ref('');
-const subject = ref(null);
-const grade = ref(null);
-const isRecording = ref(false);
+const scrollContainer = ref<HTMLElement | null>(null);
+const maskOpacity = ref(1); // 1 = 完全模糊遮挡
+const showBackTop = ref(false);
 
-const dynamics = [
-  { title: '初二三班 提交了 5 份作业', time: '10分钟前', description: '关于勾股定理的课后练习已经全部收齐' },
-  { title: '李小明 同学提问了关于勾股定理的问题', time: '1小时前', description: '他在讨论区发起了一个新帖' },
-  { title: '初二一班 单元测试平均分已出', time: '昨天', description: '本次测试平均分 85，最高分 100' },
-  { title: '初三四班 语文阅读理解打卡完成', time: '昨天', description: '全班完成打卡' },
-];
+const handleScroll = () => {
+  if (!scrollContainer.value) return;
+  const scrollTop = scrollContainer.value.scrollTop;
+
+  // Mask opacity calc (0 at top, 1 at 300px scroll)
+  // Wait, the requirement says "中部以下的部分逐渐半透明，用户向上滑动时逐渐使不透明度恢复100%"
+  // That means: when at top (scrollTop=0), opacity is 1. When scrolled down, opacity approaches 0.
+  let newOpacity = 1 - scrollTop / 300;
+  if (newOpacity < 0) newOpacity = 0;
+  if (newOpacity > 1) newOpacity = 1;
+  maskOpacity.value = newOpacity;
+
+  // Show back to top if input is out of view (around 80vh scrolled)
+  const threshold = window.innerHeight * 0.8;
+  showBackTop.value = scrollTop > threshold;
+};
+
+const scrollToTop = () => {
+  if (scrollContainer.value) {
+    scrollContainer.value.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+// 动态背景逻辑
+interface BgShape {
+  id: number;
+  type: string;
+  style: Record<string, string | number>;
+}
+
+const staticShapes = ref<BgShape[]>([]);
+const clickShapes = ref<BgShape[]>([]);
+let shapeIdCounter = 0;
+const shapeTypes = ['square', 'circle', 'triangle', 'diamond', 'cross'];
+
+const handleBgClick = (e: MouseEvent) => {
+  const target = e.target as HTMLElement;
+  if (target.closest('.section-card, .input-core-container, .greeting-section, .news-section, .ant-btn, .file-preview-item')) return;
+
+  const id = shapeIdCounter++;
+  const shapeType = shapeTypes[Math.floor(Math.random() * shapeTypes.length)] as string;
+  const size = 30 + Math.random() * 40; // 30px to 70px
+
+  const shape: BgShape = {
+    id,
+    type: shapeType,
+    style: {
+      left: `${e.clientX - size/2}px`,
+      top: `${e.clientY - size/2}px`,
+      width: `${size}px`,
+      height: `${size}px`,
+      '--click-x': `${(Math.random() - 0.5) * 300}px`,
+      '--click-y': `${(Math.random() - 0.5) * 300 - 150}px`,
+    }
+  };
+
+  clickShapes.value.push(shape);
+  setTimeout(() => {
+    clickShapes.value = clickShapes.value.filter(s => s.id !== id);
+  }, 1500);
+};
 
 onMounted(() => {
-  loading.value = true;
-  Promise.all([
-    workspaceStore.loadStats(),
-    coursewareStore.loadCoursewares()
-  ]).finally(() => {
-    loading.value = false;
-  });
+  workspaceStore.loadStats();
+  coursewareStore.loadCoursewares();
+
+  // 生成初始背景图形
+  for (let i = 0; i < 30; i++) {
+    const size = 20 + Math.random() * 30;
+    staticShapes.value.push({
+      id: shapeIdCounter++,
+      type: shapeTypes[Math.floor(Math.random() * shapeTypes.length)] as string,
+      style: {
+        left: `${Math.random() * 100}vw`,
+        bottom: `-20vh`,
+        width: `${size}px`,
+        height: `${size}px`,
+        animationDuration: `${10 + Math.random() * 15}s`,
+        animationDelay: `${Math.random() * 5}s`,
+        opacity: 0.2 + Math.random() * 0.4
+      }
+    });
+  }
 });
-
-const handleVoiceInput = () => {
-  if (isRecording.value) return;
-  isRecording.value = true;
-  message.loading({ content: '正在录音... 请说话 (模拟)', key: 'voice', duration: 2 });
-  setTimeout(async () => {
-    isRecording.value = false;
-    const res = await workspaceStore.uploadVoice(new File([''], 'voice.wav'));
-    inputValue.value += ` ${res.text} `;
-    message.success({ content: '语音识别完成', key: 'voice', duration: 2 });
-  }, 2000);
-};
-
-const uploadedFiles = ref<{ id: string, name: string, type: string, raw: File, dataUrl?: string }[]>([]);
-const isDragging = ref(false);
-let dragCounter = 0;
-
-const handleDragEnter = () => {
-  dragCounter++;
-  isDragging.value = true;
-};
-
-const handleDragLeave = () => {
-  dragCounter--;
-  if (dragCounter === 0) {
-    isDragging.value = false;
-  }
-};
-
-const handleDrop = (e: DragEvent) => {
-  dragCounter = 0;
-  isDragging.value = false;
-  const files = Array.from(e.dataTransfer?.files || []);
-  handleFiles(files);
-};
-
-const handleUpload = (file: File) => {
-  handleFiles([file]);
-  return false; // Prevent auto upload
-};
-
-const handleFiles = (files: File[]) => {
-  files.forEach(file => {
-    const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    if (!['doc', 'docx', 'ppt', 'pptx', 'pdf', 'png', 'jpg', 'jpeg', 'gif'].includes(ext)) {
-      message.warning(`不支持的文件类型: ${file.name}`);
-      return;
-    }
-
-    if (['png', 'jpg', 'jpeg', 'gif'].includes(ext)) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        uploadedFiles.value.push({
-          id: uuidv4(),
-          name: file.name,
-          type: ext,
-          raw: file,
-          dataUrl: e.target?.result as string
-        });
-      };
-      reader.readAsDataURL(file);
-    } else {
-      uploadedFiles.value.push({
-        id: uuidv4(),
-        name: file.name,
-        type: ext,
-        raw: file
-      });
-    }
-  });
-};
-
-const removeFile = (id: string) => {
-  uploadedFiles.value = uploadedFiles.value.filter(f => f.id !== id);
-};
-
-const handleSend = () => {
-  if (!inputValue.value.trim()) {
-    message.warning('请输入课程主题或上传参考材料');
-    return;
-  }
-  router.push('/cocreation');
-};
-
-const options = [
-  { value: 'math', label: '数学' },
-  { value: 'chinese', label: '语文' },
-  { value: 'english', label: '英语' },
-  { value: 'comprehensive', label: '综合' },
-];
-const filterOption = (input: string, option: { label: string }) => {
-  return option.label.toLowerCase().includes(input.toLowerCase());
-};
-
-const options2 = [
-  { value: '1', label: '一年级' },
-  { value: '2', label: '二年级' },
-  { value: '3', label: '三年级' },
-  { value: '4', label: '四年级' },
-  { value: '5', label: '五年级' },
-  { value: '6', label: '六年级' },
-  { value: '7', label: '七年级' },
-  { value: '8', label: '八年级' },
-  { value: '9', label: '九年级' },
-  { value: '10', label: '十年级' },
-  { value: '11', label: '十一级' },
-  { value: '12', label: '十二级' },
-];
-
-
-
-
 </script>
 
 <style scoped>
-.workspace-container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xl);
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.greeting h2 {
-  margin: 0;
-  font-weight: 600;
-  font-size: 28px;
-}
-
-.input-core {
+.workspace-wrapper {
   position: relative;
-  background: var(--app-panel);
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--app-border);
-  transition: all 0.3s;
+  height: calc(100vh - 64px);
+  /* assuming top nav is 64px */
+  overflow: hidden;
+  background-color: var(--app-bg);
+  /* Fallback */
 }
 
-.drag-mask {
+/* 动态背景仿照01.css */
+.dynamic-bg {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(24, 144, 255, 0.1);
-  border: 2px dashed var(--color-primary);
-  border-radius: 16px;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background-color: #ffffff15;
+}
+
+.bg-shape {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.bg-shape.square {
+  border: 1px solid var(--color-primary);
+  background-color: var(--color-primary);
+}
+
+.bg-shape.circle {
+  border: 1px solid var(--color-primary);
+  background-color: var(--color-primary);
+  border-radius: 50%;
+}
+
+.bg-shape.triangle {
+  width: 0 !important;
+  height: 0 !important;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 30px solid var(--color-primary);
+  background: transparent !important;
+}
+
+.bg-shape.diamond {
+  border: 1px solid var(--color-primary);
+  background-color: var(--color-primary);
+  transform: rotate(45deg);
+}
+
+.bg-shape.cross {
+  width: 30px !important;
+  height: 10px !important;
+  background-color: var(--color-primary);
+  position: relative;
+}
+.bg-shape.cross::after {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 10px;
+  width: 10px;
+  height: 30px;
+  background-color: var(--color-primary);
+}
+
+.bg-shape.static-shape {
+  animation: floatUp linear infinite;
+}
+
+.bg-shape.click-anim {
+  animation: clickExplode 1.5s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+}
+
+@keyframes floatUp {
+  0% { transform: scale(0) rotate(0deg); opacity: 0.6; bottom: -20vh; }
+  100% { transform: scale(3) rotate(1000deg); opacity: 0; bottom: 100vh; }
+}
+
+@keyframes clickExplode {
+  0% { transform: scale(0) rotate(0deg) translate(0, 0); opacity: 0.8; }
+  100% { transform: scale(2.5) rotate(360deg) translate(var(--click-x), var(--click-y)); opacity: 0; }
+}
+
+/* 内部滚动层 */
+.workspace-scroll-container {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+.hero-section {
+  position: relative;
+  height: 90vh;
+  /* make it almost full height */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-bottom: 5vh;
+}
+
+.hero-content {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10;
-  font-size: 18px;
-  color: var(--color-primary);
-  font-weight: 500;
+}
+
+.hero-bottom-input {
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 5;
+}
+
+/* 蒙版背景模糊效 */
+.scroll-mask {
+  position: absolute;
+  bottom: -20vh;
+  left: 0;
+  width: 100%;
+  height: 40vh;
+  background: linear-gradient(to bottom, transparent, var(--app-bg) 80%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 2;
+  /* behind input */
   pointer-events: none;
 }
 
-.file-preview-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 12px;
-  margin-bottom: 12px;
-}
-
-.file-preview-item {
+/* 内容区域 */
+.dashboard-content {
+  width: 85%;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding-bottom: 60px;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 80px;
-  height: 80px;
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-  background: var(--app-bg);
-  overflow: hidden;
-  padding: 8px;
-}
-
-.file-preview-item.is-image {
-  padding: 0;
-}
-
-.image-preview {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.file-info {
-  margin-top: 4px;
-  width: 100%;
-  text-align: center;
-}
-
-.file-name {
-  font-size: 12px;
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--app-text-sub);
-}
-
-.file-delete-mask {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.3s;
-  cursor: pointer;
-  font-size: 20px;
-}
-
-.file-preview-item:hover .file-delete-mask {
-  opacity: 1;
-}
-
-.input-core:focus-within {
-  box-shadow: var(--shadow-lg);
-  border-color: var(--color-primary);
-}
-
-.main-input {
-  font-size: 16px;
-  resize: none;
-}
-
-.input-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-border-light);
-}
-
-.send-btn {
-  border-radius: 8px;
-  padding: 0 32px;
-
+  z-index: 5;
 }
 
 .dashboard-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 24px;
-  position: relative;
-  top: 30px;
+}
+
+.left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .section-card {
-  background: white;
+  background: color-mix(in srgb, var(--app-panel) 50%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   transition: box-shadow 0.3s ease;
 }
 
 .section-card:hover {
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-xl);
 }
 
 .section-header {
@@ -490,6 +378,7 @@ const options2 = [
   margin: 0;
   font-size: 18px;
   font-weight: 500;
+  color: var(--app-text);
 }
 
 .course-list {
@@ -511,6 +400,33 @@ const options2 = [
   justify-content: center;
   color: var(--color-primary);
   font-weight: 500;
+}
+
+.cw-tag {
+  background: rgba(255, 255, 255, 0.7);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* 回到顶部 */
+.back-top-btn {
+  position: absolute;
+  right: 40px;
+  bottom: 80px;
+  z-index: 100;
+  background: color-mix(in srgb, var(--color-primary) 60%, transparent) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.3) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.4);
+  transition: all 0.3s ease;
+}
+
+.back-top-btn:hover {
+  background: color-mix(in srgb, var(--color-primary) 80%, transparent) !important;
+  transform: translateY(-5px);
+  box-shadow: 0 6px 16px rgba(var(--color-primary-rgb), 0.6);
 }
 
 @media (max-width: 1024px) {

@@ -137,3 +137,12 @@ export interface GroupMessage {
   createTime: string
   direction: 'send' | 'receive'
 }
+
+export interface EducationNews {
+  id: string
+  title: string
+  source: string
+  commentCount: number
+  time: string
+  images: string[]
+}
