@@ -6,8 +6,7 @@
       <div v-show="isDragging" class="drag-mask">
         <span>释放以拖拽上传文件 (word、ppt、pdf、图片)</span>
       </div>
-      <a-textarea v-model:value="inputValue" placeholder="输入课程主题，或拖拽上传参考文件 (word/ppt/pdf/图片)..." :bordered="false"
-                  :auto-size="{ minRows: 4, maxRows: 9 }" class="main-input" />
+
 
       <div v-if="uploadedFiles.length > 0" class="file-preview-list">
         <div v-for="file in uploadedFiles" :key="file.id" class="file-preview-item"
@@ -31,6 +30,9 @@
           </div>
         </div>
       </div>
+
+      <a-textarea v-model:value="inputValue" placeholder="输入课程主题，或拖拽上传参考文件 (word/ppt/pdf/图片)..." :bordered="false"
+                  :auto-size="{ minRows: 4, maxRows: 9 }" class="main-input" />
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
         <a-space>
