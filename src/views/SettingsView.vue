@@ -9,7 +9,6 @@
         <!-- Left Menu -->
         <div class="settings-menu">
           <a-menu v-model:selectedKeys="selectedKeys" mode="inline" style="border-right: 0">
-            <a-menu-item key="profile">个人资料</a-menu-item>
             <a-menu-item key="general">通用设置</a-menu-item>
             <a-menu-item key="notifications">通知设置</a-menu-item>
             <a-menu-item key="privacy">隐私设置</a-menu-item>
@@ -18,27 +17,6 @@
 
         <!-- Right Panel -->
         <div class="settings-content">
-          <div v-show="selectedKeys[0] === 'profile'">
-            <h3 class="section-title">个人资料</h3>
-            <a-form layout="vertical" :model="profileForm">
-              <a-form-item label="头像">
-                <a-space>
-                  <a-avatar :src="profileForm.avatar" :size="64" />
-                  <a-button type="link">更换头像</a-button>
-                </a-space>
-              </a-form-item>
-              <a-form-item label="姓名">
-                <a-input v-model:value="profileForm.name" style="max-width: 300px" />
-              </a-form-item>
-              <a-form-item label="邮箱">
-                <a-input v-model:value="profileForm.email" style="max-width: 300px" />
-              </a-form-item>
-              <a-form-item>
-                <a-button type="primary" @click="saveProfile" :loading="saving">保存修改</a-button>
-              </a-form-item>
-            </a-form>
-          </div>
-
           <div v-show="selectedKeys[0] === 'general'">
             <h3 class="section-title">通用设置</h3>
 
@@ -109,14 +87,13 @@
 import { ref, onMounted } from 'vue';
 import { useUserStore } from '../stores/userStore';
 import { useSettingsStore } from '../stores/settingsStore';
-import { message } from 'ant-design-vue';
+
 
 const userStore = useUserStore();
 const settingsStore = useSettingsStore();
 
 const selectedKeys = ref(['profile']);
 const loading = ref(true);
-const saving = ref(false);
 
 const profileForm = ref({
   name: '',
@@ -136,12 +113,7 @@ onMounted(() => {
   loading.value = false;
 });
 
-const saveProfile = async () => {
-  saving.value = true;
-  await userStore.updateProfile(profileForm.value);
-  saving.value = false;
-  message.success('资料已更新');
-};
+
 </script>
 
 <style scoped>
