@@ -10,6 +10,12 @@ export function apiLogin(
   return defaultAxios.post('/auth/login', { username, password })
 }
 
+export function apiRegister(
+  data: Record<string, string>
+): CommonResponseData<{ token: string; user: User }> {
+  return defaultAxios.post('/auth/register', data)
+}
+
 export function apiLogout(): CommonResponseData<null> {
   return defaultAxios.post('/auth/logout')
 }

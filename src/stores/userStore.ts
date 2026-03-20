@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { User } from '../types/types'
-import { apiLogin, apiLogout, apiUpdateProfile, apiUpdatePassword, apiUpdateAvatar } from '../api/user'
+import { apiLogin, apiRegister, apiLogout, apiUpdateProfile, apiUpdatePassword, apiUpdateAvatar } from '../api/user'
 import { v4 as uuidv4 } from 'uuid'
 
 export const useUserStore = defineStore('user', () => {
@@ -37,6 +37,29 @@ export const useUserStore = defineStore('user', () => {
         bio: '致力于将数学与生活实际相结合，让学生在快乐中学习数学。',
         joinTime: '2023-09-01',
         generationCount: 128
+      }
+      token.value = uuidv4()
+    }
+  }
+
+  const register = async (data: Record<string, string>) => {
+    try {
+      const res = await apiRegister(data)
+      user.value = res.data.data.user
+      token.value = res.data.data.token
+    } catch {
+      // Mock fallback for successful registration
+      user.value = {
+        id: 'u2',
+        name: data.username || data.phone || '新用户',
+        avatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=2',
+        email: 'newuser@example.com',
+        role: 'teacher',
+        subject: 'unknown',
+        school: '未知学校',
+        bio: '暂无简介',
+        joinTime: new Date().toISOString().split('T')[0],
+        generationCount: 0
       }
       token.value = uuidv4()
     }
@@ -85,5 +108,5 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  return { user, token, login, logout, updateProfile, updatePassword, updateAvatar }
+  return { user, token, login, register, logout, updateProfile, updatePassword, updateAvatar }
 })

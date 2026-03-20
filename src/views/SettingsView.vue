@@ -92,7 +92,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 const userStore = useUserStore();
 const settingsStore = useSettingsStore();
 
-const selectedKeys = ref(['profile']);
+const selectedKeys = ref(['general']);
 const loading = ref(true);
 
 const profileForm = ref({
