@@ -31,7 +31,13 @@ const router = createRouter({
         {
           path: 'classes',
           name: 'classes',
-          component: () => import('../views/ClassesView.vue')
+          component: () => import('../views/ClassesView.vue'),
+          children: [
+            { path: ':classId/students', name: 'class-students', component: () => import('../views/classesComp/ClassStudents.vue') },
+            { path: ':classId/schedule', name: 'class-schedule', component: () => import('../views/classesComp/ClassSchedule.vue') },
+            { path: ':classId/dynamics', name: 'class-dynamics', component: () => import('../views/classesComp/ClassDynamics.vue') },
+            { path: ':classId/chats', name: 'class-chats', component: () => import('../views/classesComp/ClassChats.vue') }
+          ]
         },
         {
           path: 'courseware',

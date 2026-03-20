@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type {
   ClassInfo,
   ClassTask,
@@ -30,14 +30,22 @@ const now = () => dayjs().format('YYYY-MM-DD HH:mm:ss')
 export const useClassesStore = defineStore('classes', () => {
   const classes = ref<ClassInfo[]>([])
   const currentClass = ref<ClassInfo | null>(null)
-  const currentTasks = ref<ClassTask[]>([])
-  const students = ref<StudentInfo[]>([])
-  const currentSchedule = ref<CourseScheduleItem[]>([])
-  const currentStudentMessages = ref<StudentMessage[]>([])
 
-  const groupChats = ref<GroupChat[]>([])
-  const currentGroupMessages = ref<GroupMessage[]>([])
+  const classTasks = ref<Record<string, ClassTask[]>>({})
+  const classStudents = ref<Record<string, StudentInfo[]>>({})
+  const classSchedules = ref<Record<string, CourseScheduleItem[]>>({})
+  const classStudentMessages = ref<Record<string, StudentMessage[]>>({})
+
+  const classGroupChats = ref<Record<string, GroupChat[]>>({})
+  const chatMessages = ref<Record<string, GroupMessage[]>>({})
   const activeGroupChat = ref<GroupChat | null>(null)
+
+  const currentTasks = computed(() => currentClass.value ? classTasks.value[currentClass.value.id] || [] : [])
+  const students = computed(() => currentClass.value ? classStudents.value[currentClass.value.id] || [] : [])
+  const currentSchedule = computed(() => currentClass.value ? classSchedules.value[currentClass.value.id] || [] : [])
+  const groupChats = computed(() => currentClass.value ? classGroupChats.value[currentClass.value.id] || [] : [])
+  const currentGroupMessages = computed(() => activeGroupChat.value ? chatMessages.value[activeGroupChat.value.id] || [] : [])
+  const currentStudentMessages = computed(() => []) // Kept for backwards compatibility
 
   const loadClasses = async () => {
     try {
@@ -80,128 +88,57 @@ export const useClassesStore = defineStore('classes', () => {
 
       try {
         const res = await apiGetClassStudents(classId)
-        students.value = res.data.data
+        classStudents.value[classId] = res.data.data
       } catch {
         const list = []
         for (let i = 1; i <= 45; i++) {
+          const grades = [
+            Math.floor(Math.random() * 30 + 70), 
+            Math.floor(Math.random() * 30 + 70),
+            Math.floor(Math.random() * 30 + 70),
+            Math.floor(Math.random() * 30 + 70)
+          ];
+          const averageGrade = Math.round(grades.reduce((a, b) => a + b, 0) / grades.length);
           list.push({
             id: `stu_${i}`,
             name: `学生${i}`,
             avatar: `https://api.dicebear.com/7.x/miniavs/svg?seed=${i}`,
             classId: classId,
-            progress: `${Math.floor(Math.random() * 40 + 60)}%`,
-            grades: [Math.floor(Math.random() * 30 + 70), Math.floor(Math.random() * 30 + 70)],
+            progress: Math.floor(Math.random() * 20 + 80),
+            grades,
+            averageGrade,
             activeCount: Math.floor(Math.random() * 20),
+            homeworkCompleted: Math.floor(Math.random() * 5 + 10),
+            homeworkTotal: 15,
             createTime: now(),
           })
         }
-        students.value = list
+        classStudents.value[classId] = list
       }
 
       try {
         const res = await apiGetClassSchedule(classId)
-        currentSchedule.value = res.data.data
+        classSchedules.value[classId] = res.data.data
       } catch {
-        currentSchedule.value = [
-          {
-            id: 's1',
-            classId,
-            day: '周一',
-            timeStr: '08:00 - 08:45',
-            subject: '语文',
-            teacher: '张老师',
-          },
-          {
-            id: 's2',
-            classId,
-            day: '周一',
-            timeStr: '09:00 - 09:45',
-            subject: '数学',
-            teacher: '李老师',
-          },
-          {
-            id: 's3',
-            classId,
-            day: '周二',
-            timeStr: '10:00 - 10:45',
-            subject: '英语',
-            teacher: '王老师',
-          },
+        classSchedules.value[classId] = [
+          { id: 's1', classId, day: '周一', timeStr: '08:00 - 08:45', subject: '语文', teacher: '张老师' },
+          { id: 's2', classId, day: '周一', timeStr: '09:00 - 09:45', subject: '数学', teacher: '李老师' },
+          { id: 's3', classId, day: '周二', timeStr: '10:00 - 10:45', subject: '英语', teacher: '王老师' },
         ]
       }
-    }
-  }
 
-  const loadStudentMessages = async (studentId: string) => {
-    try {
-      const res = await apiGetStudentMessages(studentId)
-      currentStudentMessages.value = res.data.data
-    } catch {
-      currentStudentMessages.value = [
-        {
-          id: 'msg1',
-          studentId,
-          senderId: studentId,
-          content: '老师好，我不太理解这节课的作业。',
-          isRead: true,
-          direction: 'receive',
-          createTime: now(),
-        },
-        {
-          id: 'msg2',
-          studentId,
-          senderId: 'teacher',
-          content: '好的，哪里不理解呢？',
-          isRead: true,
-          direction: 'send',
-          createTime: now(),
-        },
-      ]
-    }
-  }
-
-  const sendStudentMessage = async (studentId: string, content: string) => {
-    try {
-      const res = await apiSendStudentMessage(studentId, content)
-      currentStudentMessages.value.push(res.data.data)
-      return res.data.data
-    } catch {
-      const newMsg: StudentMessage = {
-        id: uuidv4(),
-        studentId,
-        senderId: 'teacher',
-        content,
-        isRead: false,
-        direction: 'send',
-        createTime: now(),
-      }
-      currentStudentMessages.value.push(newMsg)
-      return newMsg
+      await loadGroupChats(classId)
     }
   }
 
   const loadTasks = async (classId: string) => {
     try {
       const res = await apiGetClassTasks(classId)
-      currentTasks.value = res.data.data
+      classTasks.value[classId] = res.data.data
     } catch {
-      currentTasks.value = [
-        {
-          id: 't1',
-          classId,
-          title: '第一单元练习',
-          type: 'homework',
-          description: '完成课后第1-3题',
-          createTime: now(),
-        },
-        {
-          id: 't2',
-          classId,
-          title: '课前提问',
-          type: 'discussion',
-          description: '思考关于重力的问题',
-          createTime: now(),
-        },
+      classTasks.value[classId] = [
+        { id: 't1', classId, title: '第一单元练习', type: 'homework', description: '完成课后第1-3题', createTime: now() },
+        { id: 't2', classId, title: '课前提问', type: 'discussion', description: '思考关于重力的问题', createTime: now() },
       ]
     }
   }
@@ -227,183 +164,63 @@ export const useClassesStore = defineStore('classes', () => {
   }
 
   const createTask = async (data: Partial<ClassTask>) => {
+    const classId = data.classId || 'c1'
     try {
       const res = await apiCreateClassTask(data)
-      currentTasks.value.push(res.data.data)
+      if (!classTasks.value[classId]) classTasks.value[classId] = []
+      classTasks.value[classId].push(res.data.data)
       return res.data.data
     } catch {
       const task: ClassTask = {
         id: uuidv4(),
-        classId: data.classId || 'c1',
+        classId,
         title: data.title || '新任务',
         type: data.type || 'homework',
         description: data.description || '',
         createTime: now(),
         dueDate: data.dueDate,
       }
-      currentTasks.value.push(task)
+      if (!classTasks.value[classId]) classTasks.value[classId] = []
+      classTasks.value[classId].push(task)
       return task
     }
   }
 
-  const loadGroupChats = async () => {
+  const loadGroupChats = async (classId: string) => {
+    if (classGroupChats.value[classId] && classGroupChats.value[classId].length > 0) return;
     try {
       const res = await apiGetGroupChats()
-      groupChats.value = res.data.data
+      classGroupChats.value[classId] = res.data.data
     } catch {
-      if (groupChats.value.length === 0) {
-        groupChats.value = [
-          {
-            id: 'g1',
-            name: '25凌睿建筑工地',
-            avatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=g1',
-            lastMessage: '别管',
-            lastSender: 'shyler',
-            lastMessageTime: '16:27',
-            unreadCount: 100,
-            memberCount: 50,
-          },
-          {
-            id: 'g2',
-            name: '明月微星',
-            avatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=g2',
-            lastMessage: '收到',
-            lastSender: '',
-            lastMessageTime: '15:52',
-            unreadCount: 0,
-            memberCount: 2,
-          },
-          {
-            id: 'g3',
-            name: '404NotFound',
-            avatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=g3',
-            lastMessage: '中',
-            lastSender: 'UI-徐燊',
-            lastMessageTime: '14:51',
-            unreadCount: 0,
-            memberCount: 5,
-          },
-          {
-            id: 'g4',
-            name: '2025工业软件综合设计群',
-            avatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=g4',
-            lastMessage: 'MyVSYosys-pub.rar',
-            lastSender: '何',
-            lastMessageTime: '14:47',
-            unreadCount: 0,
-            memberCount: 100,
-          },
-          {
-            id: 'g5',
-            name: '白老师的C++群',
-            avatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=g5',
-            lastMessage: '@全体成员各位同学，git有...',
-            lastSender: '老白',
-            lastMessageTime: '10:29',
-            unreadCount: 0,
-            memberCount: 80,
-          },
-        ]
-      }
+      classGroupChats.value[classId] = [
+        { id: `g1_${classId}`, name: '班级通知群', avatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=g1', lastMessage: '同学们好', lastSender: '老师', lastMessageTime: '16:27', unreadCount: 0, memberCount: 45 },
+        { id: `g2_${classId}`, name: '课后讨论组', avatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=g2', lastMessage: '第3题怎么做？', lastSender: '学生A', lastMessageTime: '15:52', unreadCount: 2, memberCount: 12 },
+      ]
     }
   }
 
   const selectGroupChat = async (chat: GroupChat) => {
+    chat.unreadCount = 0;
     activeGroupChat.value = chat
+    if (chatMessages.value[chat.id]) return;
     try {
       const res = await apiGetGroupMessages(chat.id)
-      currentGroupMessages.value = res.data.data
+      chatMessages.value[chat.id] = res.data.data
     } catch {
-      if (chat.id === 'g3') {
-        currentGroupMessages.value = [
-          {
-            id: 'm1',
-            groupId: 'g3',
-            senderId: 'u2',
-            senderName: '明月微星',
-            senderAvatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=u2',
-            senderRole: '管理员',
-            senderLevel: 14,
-            content: '现在公示期也过了',
-            createTime: '2026/01/15 23:44',
-            direction: 'send',
-          },
-          {
-            id: 'm2',
-            groupId: 'g3',
-            senderId: 'u2',
-            senderName: '明月微星',
-            senderAvatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=u2',
-            senderRole: '管理员',
-            senderLevel: 14,
-            content: '问问傅老？',
-            createTime: '2026/01/15 23:45',
-            direction: 'send',
-          },
-          {
-            id: 'm3',
-            groupId: 'g3',
-            senderId: 'u3',
-            senderName: '0913023张馨木',
-            senderAvatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=u3',
-            senderRole: '群主',
-            senderLevel: 17,
-            content: '我问了两个老师，都说等通知，应该先不用管了',
-            createTime: '2026/01/15 23:46',
-            direction: 'receive',
-          },
-          {
-            id: 'm4',
-            groupId: 'g3',
-            senderId: 'u2',
-            senderName: '明月微星',
-            senderAvatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=u2',
-            senderRole: '管理员',
-            senderLevel: 14,
-            content: 'OK',
-            createTime: '2026/01/15 23:47',
-            direction: 'send',
-          },
-          {
-            id: 'm5',
-            groupId: 'g3',
-            senderId: 'u3',
-            senderName: '0913023张馨木',
-            senderAvatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=u3',
-            senderRole: '群主',
-            senderLevel: 17,
-            content: '那个大创的钱快发了，老师让我填信息，我先写我的到时候再分吧',
-            createTime: '14:37',
-            direction: 'receive',
-          },
-          {
-            id: 'm6',
-            groupId: 'g3',
-            senderId: 'u2',
-            senderName: '明月微星',
-            senderAvatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=u2',
-            senderRole: '管理员',
-            senderLevel: 14,
-            content: 'OK',
-            createTime: '14:38',
-            direction: 'send',
-          },
-          {
-            id: 'm7',
-            groupId: 'g3',
-            senderId: 'u4',
-            senderName: 'UI-徐燊',
-            senderAvatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=u4',
-            senderRole: '管理员',
-            senderLevel: 7,
-            content: '中',
-            createTime: '14:51',
-            direction: 'receive',
-          },
-        ]
-      } else {
-        currentGroupMessages.value = []
-      }
+      chatMessages.value[chat.id] = [
+        {
+          id: 'm1',
+          groupId: chat.id,
+          senderId: 'teacher',
+          senderName: '张老师',
+          senderAvatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=t1',
+          senderRole: '老师',
+          senderLevel: 20,
+          content: '大家好，这是群聊。',
+          createTime: now(),
+          direction: 'receive',
+        }
+      ]
     }
   }
 
@@ -415,14 +232,15 @@ export const useClassesStore = defineStore('classes', () => {
   ) => {
     try {
       const res = await apiSendGroupMessage(groupId, content, type, fileData)
-      currentGroupMessages.value.push(res.data.data)
+      if (!chatMessages.value[groupId]) chatMessages.value[groupId] = []
+      chatMessages.value[groupId].push(res.data.data)
       return res.data.data
     } catch {
       const newMsg: GroupMessage = {
         id: uuidv4(),
         groupId,
         senderId: 'u4',
-        senderName: 'UI-徐燊',
+        senderName: '我',
         senderAvatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=u4',
         senderRole: '管理员',
         senderLevel: 7,
@@ -430,32 +248,88 @@ export const useClassesStore = defineStore('classes', () => {
         createTime: now(),
         direction: 'send',
       }
-      // If it has specialized typing, store it on the object dynamically for UI purposes (cast since we haven't typed GroupMessage fully for files yet)
       const finalMsg = { ...newMsg, msgType: type, fileData } as unknown as GroupMessage
-      currentGroupMessages.value.push(finalMsg)
+      if (!chatMessages.value[groupId]) chatMessages.value[groupId] = []
+      chatMessages.value[groupId].push(finalMsg)
       return finalMsg
     }
+  }
+
+  const loadStudentMessages = async (studentId: string) => {
+    try {
+      const res = await apiGetStudentMessages(studentId)
+      classStudentMessages.value[studentId] = res.data.data
+    } catch {
+      classStudentMessages.value[studentId] = [
+        { id: 'msg1', studentId, senderId: studentId, content: '老师好', isRead: true, direction: 'receive', createTime: now() },
+        { id: 'msg2', studentId, senderId: 'teacher', content: '你好', isRead: true, direction: 'send', createTime: now() }
+      ]
+    }
+  }
+
+  const sendStudentMessage = async (studentId: string, content: string) => {
+    try {
+      const res = await apiSendStudentMessage(studentId, content)
+      if (!classStudentMessages.value[studentId]) classStudentMessages.value[studentId] = []
+      classStudentMessages.value[studentId].push(res.data.data)
+      return res.data.data
+    } catch {
+      const newMsg: StudentMessage = { id: uuidv4(), studentId, senderId: 'teacher', content, isRead: false, direction: 'send', createTime: now() }
+      if (!classStudentMessages.value[studentId]) classStudentMessages.value[studentId] = []
+      classStudentMessages.value[studentId].push(newMsg)
+      return newMsg
+    }
+  }
+
+  const findOrCreateStudentChat = async (classId: string, student: StudentInfo) => {
+    if (!classGroupChats.value[classId]) {
+      classGroupChats.value[classId] = []
+    }
+    const existing = classGroupChats.value[classId].find(chat => chat.name === student.name)
+    if (existing) {
+      await selectGroupChat(existing)
+      return existing.id
+    }
+    const newChat: GroupChat = {
+      id: `chat_${student.id}`,
+      name: student.name,
+      avatar: student.avatar,
+      lastMessage: '',
+      lastSender: '',
+      lastMessageTime: now().split(' ')[1],
+      unreadCount: 0,
+      memberCount: 2
+    }
+    classGroupChats.value[classId].unshift(newChat)
+    await selectGroupChat(newChat)
+    return newChat.id
   }
 
   return {
     classes,
     currentClass,
+    classTasks,
+    classStudents,
+    classSchedules,
+    classGroupChats,
+    chatMessages,
     currentTasks,
     students,
     currentSchedule,
+    groupChats,
+    currentGroupMessages,
+    activeGroupChat,
     currentStudentMessages,
     loadClasses,
     selectClass,
     loadTasks,
     createClass,
     createTask,
-    loadStudentMessages,
-    sendStudentMessage,
-    groupChats,
-    currentGroupMessages,
-    activeGroupChat,
     loadGroupChats,
     selectGroupChat,
     sendGroupMessage,
+    loadStudentMessages,
+    sendStudentMessage,
+    findOrCreateStudentChat
   }
 })

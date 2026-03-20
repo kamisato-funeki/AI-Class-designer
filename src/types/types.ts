@@ -65,9 +65,12 @@ export interface StudentInfo {
   name: string
   avatar: string
   classId: string
-  progress: string
+  progress: number
   grades: number[]
   activeCount: number
+  homeworkCompleted: number
+  homeworkTotal: number
+  averageGrade: number
   createTime: string
 }
 
