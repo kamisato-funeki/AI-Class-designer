@@ -22,6 +22,7 @@ export const useRagStore = defineStore('rag', () => {
       url: '/data/sample.pdf',
       tags: ['英语', '词汇'],
       uploadTime: now(),
+      status: 'success',
     },
     {
       id: 'f2',
@@ -31,6 +32,7 @@ export const useRagStore = defineStore('rag', () => {
       url: '/data/sample.docx',
       tags: ['数学', '教案'],
       uploadTime: now(),
+      status: 'success',
     },
   ])
 
@@ -46,17 +48,20 @@ export const useRagStore = defineStore('rag', () => {
   const uploadFile = async (file: File) => {
     try {
       const res = await apiUploadRagFile(file)
-      files.value.unshift(res.data.data)
-      return res.data.data
+      const data = { ...res.data.data, status: 'success' as const }
+      files.value.unshift(data)
+      return data
     } catch {
       const newFile: RagFile = {
         id: uuidv4(),
         name: file.name,
         size: file.size,
         type: file.name.split('.').pop() || 'unknown',
-        url: '/data/sample.pdf',
+        url: URL.createObjectURL(file),
         tags: [],
         uploadTime: now(),
+        status: 'unuploaded',
+        rawFile: file,
       }
       files.value.unshift(newFile)
       return newFile
@@ -96,5 +101,27 @@ export const useRagStore = defineStore('rag', () => {
     }
   }
 
-  return { files, loadFiles, uploadFile, deleteFile, updateTags, addTag, removeTag }
+  const reuploadFile = async (id: string) => {
+    const fileIndex = files.value.findIndex((f) => f.id === id)
+    if (fileIndex !== -1) {
+      const file = files.value[fileIndex]
+      if (file && file.status === 'unuploaded' && file.rawFile) {
+        try {
+          const res = await apiUploadRagFile(file.rawFile)
+          // Merge API result and set status to success
+          files.value[fileIndex] = {
+            ...file,
+            ...res.data.data,
+            status: 'success',
+          }
+        } catch {
+          // If still fails, keep it as unuploaded.
+          // In a real app we might throw to let the UI show an error.
+          throw new Error('重新上传失败')
+        }
+      }
+    }
+  }
+
+  return { files, loadFiles, uploadFile, deleteFile, updateTags, addTag, removeTag, reuploadFile }
 })

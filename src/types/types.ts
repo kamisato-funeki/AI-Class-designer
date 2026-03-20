@@ -47,6 +47,8 @@ export interface RagFile {
   url: string
   tags: string[]
   uploadTime: string
+  status?: 'success' | 'unuploaded'
+  rawFile?: File
 }
 
 export interface Message {

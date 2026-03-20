@@ -25,9 +25,11 @@
           rowKey="id">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'type'">
-              <FilePdfOutlined v-if="record.type === 'pdf'" style="color: #ff4d4f" />
-              <FileWordOutlined v-else-if="record.type === 'docx' || record.type === 'word'" style="color: #1890ff" />
-              <FileImageOutlined v-else style="color: #52c41a" />
+              <FilePdfOutlined v-if="record.type?.toLowerCase() === 'pdf'" style="color: #ff4d4f" />
+              <FileWordOutlined v-else-if="['docx', 'doc', 'word'].includes(record.type?.toLowerCase() || '')" style="color: #1890ff" />
+              <FileExcelOutlined v-else-if="['xlsx', 'xls'].includes(record.type?.toLowerCase() || '')" style="color: #52c41a" />
+              <FileImageOutlined v-else-if="['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(record.type?.toLowerCase() || '')" style="color: #52c41a" />
+              <FileOutlined v-else style="color: #595959" />
             </template>
 
             <template v-else-if="column.key === 'name'">
@@ -44,7 +46,10 @@
             </template>
 
             <template v-else-if="column.key === 'status'">
-              <a-badge status="success" text="已完成" />
+              <a-tooltip v-if="record.status === 'unuploaded'" title="点击后重新上传">
+                <a-badge status="warning" text="未上传" style="cursor: pointer" @click="handleReupload(record)" />
+              </a-tooltip>
+              <a-badge v-else status="success" text="已完成" />
             </template>
 
             <template v-else-if="column.key === 'action'">
@@ -66,10 +71,18 @@
       <div style="height: 70vh; overflow: auto; background: #f5f5f5; display: flex; justify-content: center;">
         <vue-office-docx v-if="previewFile?.type === 'docx' || previewFile?.type === 'word'" :src="previewFile?.url"
           style="width: 100%; height: 100%;" />
+        <div v-else-if="previewFile?.type === 'doc'" style="display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; height: 100%; width: 100%; color: gray; background: white; border-radius: 8px;">
+          <span style="font-size: 16px;">由于浏览器限制，暂不支持直接预览旧版二进制 <b>.doc</b> 格式文件</span>
+          <span style="font-size: 14px;">建议您在 Office/WPS 中将其另存为 <b>.docx</b> 格式后重新上传</span>
+        </div>
         <vue-office-pptx v-else-if="previewFile?.type === 'pptx' || previewFile?.type === 'ppt'" :src="previewFile?.url"
           style="width: 100%; height: 100%;" />
         <vue-office-pdf v-else-if="previewFile?.type === 'pdf'" :src="previewFile?.url"
           style="width: 100%; height: 100%;" />
+        <vue-office-excel v-else-if="previewFile?.type === 'xlsx' || previewFile?.type === 'xls'" :src="previewFile?.url"
+          style="width: 100%; height: 100%;" />
+        <img v-else-if="['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(previewFile?.type?.toLowerCase() || '')"
+          :src="previewFile?.url" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
         <div v-else
           style="display: flex; align-items: center; border-radius: 8px; justify-content: center; height: 100%; width: 100%; color: gray; background: white;">
           暂不支持预览该格式 / 或文件不存在
@@ -100,7 +113,9 @@ import {
   UploadOutlined,
   FilePdfOutlined,
   FileWordOutlined,
-  FileImageOutlined
+  FileImageOutlined,
+  FileExcelOutlined,
+  FileOutlined
 } from '@ant-design/icons-vue';
 import { useRagStore } from '../stores/ragStore';
 import type { RagFile } from '../types/types';
@@ -109,6 +124,8 @@ import VueOfficeDocx from '@vue-office/docx';
 import '@vue-office/docx/lib/index.css';
 import VueOfficePptx from '@vue-office/pptx';
 import VueOfficePdf from '@vue-office/pdf';
+import VueOfficeExcel from '@vue-office/excel';
+import '@vue-office/excel/lib/index.css';
 
 const ragStore = useRagStore();
 const loading = ref(true);
@@ -138,6 +155,14 @@ const onSelectChange = (keys: string[]) => {
 };
 
 const handleUpload = async (file: File) => {
+  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+  const supportedExts = ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'txt', 'md', 'csv'];
+  
+  if (!supportedExts.includes(ext)) {
+    message.warning(`不支持上传 .${ext} 格式，请上传 PDF、Office文档 或常规图片。`);
+    return false;
+  }
+
   uploading.value = true;
   await ragStore.uploadFile(file);
   uploading.value = false;
@@ -150,6 +175,21 @@ const handleDelete = async (id: string) => {
   await ragStore.deleteFile(id);
   loading.value = false;
   message.success('已删除');
+};
+
+const handleReupload = async (record: RagFile) => {
+  if (record.status !== 'unuploaded') return;
+  
+  loading.value = true;
+  try {
+    await ragStore.reuploadFile(record.id);
+    message.success('重新上传成功');
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : '重新上传失败';
+    message.error(msg);
+  } finally {
+    loading.value = false;
+  }
 };
 
 const currentTagFileId = ref('');
