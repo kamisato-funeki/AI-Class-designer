@@ -12,13 +12,13 @@
             <a-card hoverable class="class-card" size="small" v-for="cls in classesStore.classes" :key="cls.id"
               :class="{ active: classesStore.currentClass?.id === cls.id }" @click="handleClassSwitch(cls.id)">
               <template #title>
-                <span style="font-size: 15px;">{{ cls.name }}</span>
+                <span style="font-size: 15px;">{{ cls.grade }}{{ cls.classNumber }}</span>
               </template>
               <template #extra>
                 <a-badge :count="`${cls.studentCount}人`"
                   :number-style="{ backgroundColor: 'var(--color-background-light)', color: 'var(--color-text-main-light)' }" />
               </template>
-              <p style="margin: 0; color: gray;font-size: 10px;">创立: {{ cls.createTime.split(' ')[0] }}</p>
+              <p style="margin: 0; color: gray;font-size: 12px;">{{ cls.name }}</p>
             </a-card>
           </div>
           <div class="class-list-footer">
@@ -30,7 +30,11 @@
         <div class="class-detail-area" v-if="classesStore.currentClass">
           <a-card :bordered="false" class="detail-card">
             <div class="detail-header" v-show="!(activeTab === 'class-chats' && classesStore.activeGroupChat)">
-              <h3>{{ classesStore.currentClass.name }} - {{ currentTabName }}</h3>
+              <h3>
+                {{ classesStore.currentClass.grade }}{{ classesStore.currentClass.classNumber }}
+                <span style="font-size: 14px; font-weight: normal; color: gray;">({{ classesStore.currentClass.name }})</span>
+                - {{ currentTabName }}
+              </h3>
               <a-space>
                 <a-button type="primary" @click="openCreateTask('material')">发布课件</a-button>
                 <a-button @click="openCreateTask('homework')">布置作业</a-button>
@@ -44,7 +48,7 @@
               <a-tab-pane key="class-dynamics" tab="班级动态" />
               <a-tab-pane key="class-chats" tab="班级消息" />
             </a-tabs>
-            
+
             <div class="tab-content" :style="(activeTab === 'class-chats' && classesStore.activeGroupChat) ? 'padding-top: 0;' : ''">
               <router-view @openDetails="openStudentDetails" />
             </div>
@@ -63,6 +67,33 @@
         <a-form-item label="班级名称">
           <a-input v-model:value="formStateClass.name" placeholder="请输入班级名称" />
         </a-form-item>
+        <a-form-item label="年级">
+          <a-select v-model:value="formStateClass.grade" placeholder="请选择年级">
+            <a-select-option value="一年级">一年级</a-select-option>
+            <a-select-option value="二年级">二年级</a-select-option>
+            <a-select-option value="三年级">三年级</a-select-option>
+            <a-select-option value="四年级">四年级</a-select-option>
+            <a-select-option value="五年级">五年级</a-select-option>
+            <a-select-option value="六年级">六年级</a-select-option>
+            <a-select-option value="初一">初一</a-select-option>
+            <a-select-option value="初二">初二</a-select-option>
+            <a-select-option value="初三">初三</a-select-option>
+            <a-select-option value="高一">高一</a-select-option>
+            <a-select-option value="高二">高二</a-select-option>
+            <a-select-option value="高三">高三</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="班级">
+          <a-select v-model:value="formStateClass.classNumber" placeholder="请选择班级">
+            <a-select-option v-for="i in 20" :key="i" :value="i + '班'">{{ i }}班</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="班级人数">
+          <a-input-number v-model:value="formStateClass.studentCount" placeholder="请填写班级人数" :min="1" style="width: 100%" />
+        </a-form-item>
+        <a-form-item label="班级简介">
+          <a-textarea v-model:value="formStateClass.description" placeholder="请输入班级简介" :rows="3" />
+        </a-form-item>
       </a-form>
     </a-modal>
 
@@ -73,7 +104,7 @@
         <a-form-item label="标题">
           <a-input v-model:value="formStateTask.title" placeholder="请输入标题" />
         </a-form-item>
-        
+
         <template v-if="taskType === 'material'">
           <a-form-item label="课件来源">
             <a-radio-group v-model:value="formStateTask.materialSource">
@@ -135,11 +166,11 @@ const router = useRouter();
 
 const activeTab = computed(() => {
   const name = route.name as string;
-  if (!name) return 'class-chats';
+  if (!name) return 'class-students';
   if (['class-students', 'class-schedule', 'class-dynamics', 'class-chats'].includes(name)) {
     return name;
   }
-  return 'class-chats';
+  return 'class-students';
 });
 
 const currentTabName = computed(() => {
@@ -159,10 +190,10 @@ const createTaskVisible = ref(false);
 const studentStatsVisible = ref(false);
 
 const taskType = ref<'homework' | 'discussion' | 'material'>('homework');
-const formStateClass = ref({ name: '', grade: '三年级', subject: '全部' });
-const formStateTask = ref<{ 
-  title: string; 
-  description: string; 
+const formStateClass = ref({ name: '', grade: '三年级', classNumber: '1班', description: '', studentCount: 45 });
+const formStateTask = ref<{
+  title: string;
+  description: string;
   type: 'homework' | 'discussion' | 'material';
   materialSource: 'local' | 'generated';
 }>({ title: '', description: '', type: 'homework', materialSource: 'local' });
@@ -179,11 +210,14 @@ onMounted(() => {
     if (classesStore.classes.length > 0 && !classesStore.currentClass) {
       const initId = route.params.classId as string || classesStore.classes[0]!.id;
       await classesStore.selectClass(initId);
-      if (!route.params.classId) {
-        router.push({ name: 'class-chats', params: { classId: initId } });
+      if (!route.params.classId || route.name === 'classes') {
+        router.push({ name: 'class-students', params: { classId: initId } });
       }
     } else if (classesStore.currentClass) {
       await classesStore.selectClass(classesStore.currentClass.id);
+      if (route.name === 'classes') {
+        router.push({ name: 'class-students', params: { classId: classesStore.currentClass.id } });
+      }
     }
   })().finally(() => {
     loading.value = false;
@@ -194,7 +228,7 @@ const handleClassSwitch = async (id: string) => {
   loading.value = true;
   classesStore.activeGroupChat = null;
   await classesStore.selectClass(id);
-  router.push({ name: activeTab.value || 'class-chats', params: { classId: id } });
+  router.push({ name: activeTab.value || 'class-students', params: { classId: id } });
   loading.value = false;
 };
 
@@ -210,7 +244,7 @@ const handleCreateClass = async () => {
   loading.value = true;
   const newClass = await classesStore.createClass(formStateClass.value);
   createClassVisible.value = false;
-  formStateClass.value.name = '';
+  formStateClass.value = { name: '', grade: '三年级', classNumber: '1班', description: '', studentCount: 45 };
   loading.value = false;
   message.success('创建成功');
   if (newClass) {
@@ -248,7 +282,7 @@ const handleCreateTask = async () => {
 
 const openStudentDetails = (student: StudentInfo) => {
   const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#1677ff';
-  
+
   activeStudentDetails.value = student;
   chartOption.value = {
     tooltip: {},
@@ -261,7 +295,7 @@ const openStudentDetails = (student: StudentInfo) => {
         type: 'bar',
         barWidth: '40%',
         data: student.grades,
-        itemStyle: { 
+        itemStyle: {
           color: primaryColor,
           borderRadius: [6, 6, 0, 0]
         },

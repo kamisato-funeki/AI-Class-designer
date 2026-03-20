@@ -56,18 +56,18 @@ export const useClassesStore = defineStore('classes', () => {
         classes.value = [
           {
             id: 'c1',
-            name: '三年级1班',
+            name: '理科实验班',
             grade: '三年级',
-            subject: '全部',
+            classNumber: '1班',
             studentCount: 45,
             createTime: now(),
             description: '活泼好动的理科强班',
           },
           {
             id: 'c2',
-            name: '五年级2班',
+            name: '英语特色班',
             grade: '五年级',
-            subject: '全部',
+            classNumber: '2班',
             studentCount: 42,
             createTime: now(),
             description: '英语特色班',
@@ -153,8 +153,8 @@ export const useClassesStore = defineStore('classes', () => {
         id: uuidv4(),
         name: data.name || '新班级',
         grade: data.grade || '一年级',
-        subject: data.subject || '全部',
-        studentCount: 0,
+        classNumber: data.classNumber || '1班',
+        studentCount: data.studentCount || 45,
         createTime: now(),
         description: data.description || '',
       }

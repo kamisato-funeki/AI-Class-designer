@@ -4,13 +4,18 @@ export interface User {
   avatar: string
   email: string
   role: 'teacher' | 'student' | 'admin'
+  subject?: string
+  school?: string
+  bio?: string
+  joinTime?: string
+  generationCount?: number
 }
 
 export interface ClassInfo {
   id: string
   name: string
   grade: string
-  subject: string
+  classNumber: string
   studentCount: number
   coverImage?: string
   description: string

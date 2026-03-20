@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { User } from '../types/types'
-import { apiLogin, apiLogout, apiUpdateProfile } from '../api/user'
+import { apiLogin, apiLogout, apiUpdateProfile, apiUpdatePassword, apiUpdateAvatar } from '../api/user'
 import { v4 as uuidv4 } from 'uuid'
 
 export const useUserStore = defineStore('user', () => {
@@ -11,6 +11,11 @@ export const useUserStore = defineStore('user', () => {
     avatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=1',
     email: 'teacher@example.com',
     role: 'teacher',
+    subject: 'math',
+    school: '第一实验中学',
+    bio: '致力于将数学与生活实际相结合，让学生在快乐中学习数学。',
+    joinTime: '2023-09-01',
+    generationCount: 128
   })
   const token = ref<string>(uuidv4())
 
@@ -27,6 +32,11 @@ export const useUserStore = defineStore('user', () => {
         avatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=1',
         email: 'teacher@example.com',
         role: 'teacher',
+        subject: 'math',
+        school: '第一实验中学',
+        bio: '致力于将数学与生活实际相结合，让学生在快乐中学习数学。',
+        joinTime: '2023-09-01',
+        generationCount: 128
       }
       token.value = uuidv4()
     }
@@ -35,6 +45,8 @@ export const useUserStore = defineStore('user', () => {
   const logout = async () => {
     try {
       await apiLogout()
+    } catch {
+      // Ignore network errors, force local logout
     } finally {
       user.value = null
       token.value = ''
@@ -52,5 +64,26 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  return { user, token, login, logout, updateProfile }
+  const updatePassword = async (password: string) => {
+    try {
+      await apiUpdatePassword(password)
+    } catch {
+      // Mock success
+    }
+  }
+
+  const updateAvatar = async (dataUrl: string) => {
+    try {
+      const res = await apiUpdateAvatar(dataUrl)
+      if (user.value) {
+        user.value.avatar = res.data.data
+      }
+    } catch {
+      if (user.value) {
+        user.value.avatar = dataUrl
+      }
+    }
+  }
+
+  return { user, token, login, logout, updateProfile, updatePassword, updateAvatar }
 })

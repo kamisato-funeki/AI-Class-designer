@@ -7,9 +7,9 @@
     <div class="content-split">
       <!-- Left: Profile Summary -->
       <div class="summary-area">
-        <a-card class="summary-card">
+        <a-card class="summary-card shadow-card">
           <div class="avatar-wrapper">
-            <a-avatar :size="80" style="background-color: var(--color-primary)">
+            <a-avatar :size="80" :src="profileData.avatar" style="background-color: var(--color-primary)">
               <template #icon>
                 <UserOutlined />
               </template>
@@ -57,15 +57,13 @@
       <!-- Right: Detailed Info & Settings -->
       <div class="detail-area">
         <!-- My Classes -->
-        <a-card title="我的班级" class="mb-24">
-          <template #extra>
-            <a-button type="link">添加班级</a-button>
-          </template>
-          <a-list :grid="{ gutter: 16, column: 2 }" :data-source="classesList">
+        <!-- My Classes -->
+        <a-card title="我的班级" class="mb-24 shadow-card">
+          <a-list :grid="{ gutter: 16, column: 2 }" :data-source="classesStore.classes">
             <template #renderItem="{ item }">
               <a-list-item>
-                <a-card :title="item.name" size="small" hoverable>
-                  <p class="class-info">学生人数：{{ item.students }}人</p>
+                <a-card :title="item.name" size="small" hoverable class="shadow-card">
+                  <p class="class-info">学生人数：{{ item.studentCount || 0 }}人</p>
                   <p class="class-info">年级：{{ item.grade }}</p>
                 </a-card>
               </a-list-item>
@@ -74,19 +72,19 @@
         </a-card>
 
         <!-- Security Settings -->
-        <a-card title="安全设置">
+        <!-- Security Settings -->
+        <a-card title="安全设置" class="shadow-card">
           <a-list item-layout="horizontal">
             <a-list-item>
               <a-list-item-meta title="账号密码" description="当前密码强度：强" />
-              <template #actions><a-button type="link">修改</a-button></template>
+              <template #actions><a-button type="primary" ghost class="action-btn" @click="isPasswordModalVisible = true">修改</a-button></template>
             </a-list-item>
-            <a-list-item>
-              <a-list-item-meta title="绑定手机" description="已绑定：138****8000" />
-              <template #actions><a-button type="link">修改</a-button></template>
-            </a-list-item>
-            <a-list-item>
+            <a-list-item v-if="!profileData.email">
               <a-list-item-meta title="绑定邮箱" description="未绑定" />
-              <template #actions><a-button type="link">绑定</a-button></template>
+              <template #actions><a-button type="primary" ghost class="action-btn">绑定</a-button></template>
+            </a-list-item>
+            <a-list-item v-else>
+              <a-list-item-meta title="绑定邮箱" :description="`已绑定：${profileData.email}`" />
             </a-list-item>
           </a-list>
         </a-card>
@@ -98,6 +96,17 @@
       @cancel="isEditModalVisible = false">
       <a-form layout="vertical" :model="editForm">
         <a-row :gutter="16">
+          <a-col :span="24">
+            <a-form-item label="头像">
+              <div style="display: flex; align-items: center; gap: 16px;">
+                <a-avatar :size="64" :src="editForm.avatar" style="background-color: var(--color-primary)">
+                  <template #icon><UserOutlined /></template>
+                </a-avatar>
+                <a-button type="primary" ghost class="action-btn" @click="triggerAvatarUpload">更换头像</a-button>
+                <input type="file" ref="avatarInputRef" accept="image/*" style="display: none" @change="handleAvatarChange" />
+              </div>
+            </a-form-item>
+          </a-col>
           <a-col :span="12">
             <a-form-item label="姓名">
               <a-input v-model:value="editForm.name" />
@@ -121,26 +130,70 @@
         </a-form-item>
       </a-form>
     </a-modal>
+
+
+    <!-- Modify Password Modal -->
+    <a-modal v-model:open="isPasswordModalVisible" title="修改账号密码" @ok="handleSavePassword" @cancel="isPasswordModalVisible = false">
+      <a-form layout="vertical">
+        <a-form-item label="原密码">
+          <a-input-password v-model:value="passwordForm.old" />
+        </a-form-item>
+        <a-form-item label="新密码">
+          <a-input-password v-model:value="passwordForm.new" />
+        </a-form-item>
+        <a-form-item label="确认新密码">
+          <a-input-password v-model:value="passwordForm.confirm" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <!-- Avatar Cropper Modal -->
+    <a-modal v-model:open="isAvatarModalVisible" title="裁剪头像" @ok="handleUploadAvatar" @cancel="isAvatarModalVisible = false" width="600px">
+      <div class="cropper-wrapper" style="height: 400px;">
+        <vueCropper
+          ref="cropperRef"
+          :img="cropperImg"
+          :outputSize="1"
+          outputType="png"
+          :info="true"
+          :canScale="true"
+          :autoCrop="true"
+          :autoCropWidth="200"
+          :autoCropHeight="200"
+          :fixed="true"
+          :fixedNumber="[1, 1]"
+          :centerBox="true"
+        />
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { UserOutlined } from '@ant-design/icons-vue';
 import { message, Modal } from 'ant-design-vue';
+import { useRouter } from 'vue-router';
+import { useUserStore } from '../stores/userStore';
+import { useClassesStore } from '../stores/classesStore';
+import { VueCropper } from 'vue-cropper';
+import 'vue-cropper/dist/index.css';
+
+const router = useRouter();
+const userStore = useUserStore();
+const classesStore = useClassesStore();
 
 // Profile Data
-const profileData = reactive({
-  name: '李雷',
-  role: '特级教师',
-  subject: 'math',
-  school: '第一实验中学',
-  bio: '致力于将数学与生活实际相结合，让学生在快乐中学习数学。',
-  joinTime: '2023-09-01',
-  generationCount: 128
+const profileData = computed(() => userStore.user || {} as Record<string, unknown>);
+
+onMounted(() => {
+  if (classesStore.classes.length === 0) {
+    classesStore.loadClasses();
+  }
 });
 
-const getSubjectName = (val: string) => {
+const getSubjectName = (val: unknown) => {
+  if (typeof val !== 'string') return '';
   const map: Record<string, string> = {
     math: '数学',
     chinese: '语文',
@@ -149,26 +202,52 @@ const getSubjectName = (val: string) => {
   return map[val] || val;
 };
 
-// Classes List Data
-const classesList = ref([
-  { id: 1, name: '高一(1)班', students: 45, grade: '高一' },
-  { id: 2, name: '高一(2)班', students: 42, grade: '高一' },
-  { id: 3, name: '高二(3)班', students: 50, grade: '高二' },
-]);
-
 // Edit Profile Modal
 const isEditModalVisible = ref(false);
-const editForm = reactive({ ...profileData });
+const editForm = reactive({ name: '', subject: '', school: '', bio: '', avatar: '' });
 
 const handleEditProfile = () => {
-  Object.assign(editForm, profileData);
+  Object.assign(editForm, {
+    name: profileData.value.name,
+    subject: profileData.value.subject,
+    school: profileData.value.school,
+    bio: profileData.value.bio,
+    avatar: profileData.value.avatar
+  });
   isEditModalVisible.value = true;
 };
 
-const handleSaveProfile = () => {
-  Object.assign(profileData, editForm);
-  isEditModalVisible.value = false;
-  message.success('个人资料已保存');
+const handleSaveProfile = async () => {
+  try {
+    await userStore.updateProfile(editForm);
+    isEditModalVisible.value = false;
+    message.success('个人资料已保存');
+  } catch {
+    message.error('保存失败');
+  }
+};
+
+
+
+// Password Modal
+const isPasswordModalVisible = ref(false);
+const passwordForm = reactive({ old: '', new: '', confirm: '' });
+
+const handleSavePassword = async () => {
+  if (passwordForm.new !== passwordForm.confirm) {
+    message.error('两次输入的新密码不一致');
+    return;
+  }
+  try {
+    await userStore.updatePassword(passwordForm.new);
+    isPasswordModalVisible.value = false;
+    message.success('密码修改成功');
+    passwordForm.old = '';
+    passwordForm.new = '';
+    passwordForm.confirm = '';
+  } catch {
+    message.error('修改密码失败');
+  }
 };
 
 // Logout handler
@@ -178,13 +257,54 @@ const handleLogout = () => {
     content: '您确定要退出当前账号吗？',
     okText: '确认',
     cancelText: '取消',
-    onOk() {
+    async onOk() {
+      await userStore.logout();
       message.success('已退出登录');
-      // Here usually we would clear the token and router.push('/login')
+      router.push('/login');
     },
     onCancel() { },
   });
 };
+
+// Avatar Upload & Crop
+const avatarInputRef = ref<HTMLInputElement | null>(null);
+const isAvatarModalVisible = ref(false);
+const cropperRef = ref<InstanceType<typeof VueCropper> | null>(null);
+const cropperImg = ref('');
+
+const triggerAvatarUpload = () => {
+  avatarInputRef.value?.click();
+};
+
+const handleAvatarChange = (e: Event) => {
+  const target = e.target as HTMLInputElement;
+  if (!target.files || target.files.length === 0) return;
+  const file = target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    cropperImg.value = evt.target?.result as string;
+    isAvatarModalVisible.value = true;
+  };
+  reader.readAsDataURL(file);
+  target.value = ''; // Reset
+};
+
+const handleUploadAvatar = () => {
+  if (!cropperRef.value) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (cropperRef.value as any).getCropData(async (dataUrl: string) => {
+    try {
+      await userStore.updateAvatar(dataUrl);
+      editForm.avatar = dataUrl;
+      isAvatarModalVisible.value = false;
+      message.success('头像上传成功');
+    } catch {
+      message.error('头像上传失败');
+    }
+  });
+};
+
 </script>
 
 <style scoped>
@@ -273,5 +393,32 @@ const handleLogout = () => {
 .class-info {
   margin: 0 0 8px 0;
   color: var(--app-text-sub);
+}
+
+.shadow-card {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+  transition: all 0.3s;
+}
+
+.shadow-card:hover {
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.08), 0 6px 16px 0 rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme='dark'] .shadow-card {
+  box-shadow: 0 1px 2px -2px rgba(0, 0, 0, 0.32), 0 3px 6px 0 rgba(0, 0, 0, 0.24), 0 5px 12px 4px rgba(0, 0, 0, 0.18);
+}
+
+html[data-theme='dark'] .shadow-card:hover {
+  box-shadow: 0 4px 8px -4px rgba(0, 0, 0, 0.38), 0 6px 16px 0 rgba(0, 0, 0, 0.28), 0 8px 24px 8px rgba(0, 0, 0, 0.22);
+}
+
+.action-btn {
+  border-radius: 6px;
+}
+
+.cropper-wrapper {
+  background-color: var(--app-bg-secondary);
+  border-radius: 8px;
+  overflow: hidden;
 }
 </style>
