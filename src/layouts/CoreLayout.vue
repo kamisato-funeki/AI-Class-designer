@@ -46,16 +46,12 @@
             </template>
             AI专属知识库
           </a-menu-item>
-          <a-sub-menu key="courseware">
+          <a-menu-item key="courseware">
             <template #icon>
               <FolderOpenOutlined />
             </template>
-            <template #title>我的课件</template>
-            <a-menu-item key="course1">数学公开课</a-menu-item>
-            <a-menu-item key="course2">语文阅读课</a-menu-item>
-            <a-menu-item key="course3">英语听说课</a-menu-item>
-            <a-menu-item key="course_all">全部课件...</a-menu-item>
-          </a-sub-menu>
+            我的课件
+          </a-menu-item>
           <a-menu-item key="design-center">
             <template #icon>
               <AppstoreOutlined />
@@ -248,13 +244,10 @@ const handleMenuClick = (info: { key: string }) => {
   if (info.key === 'rag') router.push('/rag');
   if (info.key === 'classes') router.push('/classes');
   if (info.key === 'design-center') router.push('/design');
-  if (info.key === 'course_all') router.push('/courseware');
+  if (info.key === 'courseware') router.push('/courseware');
   if (info.key === 'settings') router.push('/settings');
   if (info.key === 'profile') router.push('/profile');
   if (info.key === 'messages') router.push('/messages');
-  if (info.key.startsWith('course') && info.key !== 'course_all') {
-    router.push('/cocreation'); // jump to workspace for specific course
-  }
   if (isMobile.value) {
     collapsed.value = true;
   }

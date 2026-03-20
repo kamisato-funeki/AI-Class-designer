@@ -12,7 +12,7 @@
               <BarsOutlined />
             </a-radio-button>
           </a-radio-group>
-          <a-button type="primary" @click="$router.push('/cocreation')">新建课件</a-button>
+          <a-button type="primary" @click="openNewCourseModal">新建课件</a-button>
         </a-space>
       </div>
 
@@ -48,7 +48,9 @@
             <a-tag v-for="tag in cw.tags" :key="tag" closable @close.prevent="handleRemoveTag(cw.id, tag)"
               color="blue">{{ tag
               }}</a-tag>
-            <a-tag style="background: #fff; border-style: dashed; cursor: pointer;" @click="openTagModal(cw.id)">
+            <a-tag
+              style="background: transparent; border-color: var(--app-border); border-style: dashed; cursor: pointer; color: var(--app-text-main);"
+              @click="openTagModal(cw.id)">
               <PlusOutlined /> 新增标签
             </a-tag>
           </div>
@@ -62,7 +64,7 @@
                 <a-menu>
                   <a-menu-item @click="$router.push('/cocreation')">继续编辑</a-menu-item>
                   <a-menu-divider />
-                  <a-menu-item danger>移至回收站</a-menu-item>
+                  <a-menu-item danger @click="handleDeleteCourseware(cw.id)">移至回收站</a-menu-item>
                 </a-menu>
               </template>
             </a-dropdown>
@@ -76,10 +78,17 @@
         <a-table :dataSource="listDataSource" :columns="columns">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'tags'">
-              <a-tag v-for="tag in record.tags" :key="tag" color="blue">{{ tag }}</a-tag>
+              <a-tag v-for="tag in record.tags" :key="tag" color="blue" closable
+                @close.prevent="handleRemoveTag(record.key, tag)">{{ tag }}</a-tag>
+              <a-tag
+                style="background: transparent; border-color: var(--app-border); border-style: dashed; cursor: pointer; color: var(--app-text-main);"
+                @click="openTagModal(record.key)">
+                <PlusOutlined /> 新增标签
+              </a-tag>
             </template>
             <template v-else-if="column.key === 'action'">
               <a-button type="link" @click="$router.push('/cocreation')">编辑</a-button>
+              <a-button type="link" danger @click="handleDeleteCourseware(record.key)">删除</a-button>
             </template>
           </template>
         </a-table>
@@ -89,21 +98,52 @@
       <a-modal v-model:open="tagModalVisible" title="添加标签" :footer="null">
         <a-input-search v-model:value="newTagValue" placeholder="输入新标签" enter-button="添加" @search="handleAddTag" />
       </a-modal>
+
+      <!-- New Course Modal -->
+      <a-modal v-model:open="newCourseModalVisible" title="新建课件" @ok="createNewCourse" @cancel="closeNewCourseModal"
+        :confirmLoading="creatingCourse">
+        <a-form layout="vertical" :model="formState">
+          <a-form-item label="课件名称" required>
+            <a-input v-model:value="formState.title" placeholder="请输入课件名称" />
+          </a-form-item>
+          <a-form-item label="适用科目">
+            <a-select v-model:value="formState.subject" placeholder="请选择科目">
+              <a-select-option value="语文">语文</a-select-option>
+              <a-select-option value="数学">数学</a-select-option>
+              <a-select-option value="英语">英语</a-select-option>
+              <a-select-option value="综合">综合</a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item label="适用年级">
+            <a-select v-model:value="formState.grade" placeholder="请选择年级">
+              <a-select-option value="一年级">一年级</a-select-option>
+              <a-select-option value="二年级">二年级</a-select-option>
+              <a-select-option value="三年级">三年级</a-select-option>
+              <a-select-option value="四年级">四年级</a-select-option>
+              <a-select-option value="五年级">五年级</a-select-option>
+              <a-select-option value="六年级">六年级</a-select-option>
+            </a-select>
+          </a-form-item>
+        </a-form>
+      </a-modal>
     </div>
   </a-spin>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { message } from 'ant-design-vue';
+import { ref, computed, onMounted, createVNode } from 'vue';
+import { message, Modal } from 'ant-design-vue';
+import { useRouter } from 'vue-router';
 import {
   AppstoreOutlined,
+  ExclamationCircleOutlined,
   BarsOutlined,
   MoreOutlined,
   PlusOutlined
 } from '@ant-design/icons-vue';
 import { useCoursewareStore } from '../stores/coursewareStore';
 
+const router = useRouter();
 const coursewareStore = useCoursewareStore();
 const viewMode = ref('grid');
 const loading = ref(true);
@@ -165,21 +205,62 @@ const openTagModal = (id: string) => {
   tagModalVisible.value = true;
 };
 
-const handleAddTag = () => {
+const handleAddTag = async () => {
   if (newTagValue.value && currentCwId.value) {
-    const cw = coursewareStore.coursewares.find(c => c.id === currentCwId.value);
-    if (cw && !cw.tags.includes(newTagValue.value)) {
-      cw.tags.push(newTagValue.value);
-      message.success('标签添加成功');
-    }
+    await coursewareStore.addTag(currentCwId.value, newTagValue.value);
+    message.success('标签添加成功');
     newTagValue.value = '';
   }
 };
 
-const handleRemoveTag = (id: string, tag: string) => {
-  const cw = coursewareStore.coursewares.find(c => c.id === id);
-  if (cw) {
-    cw.tags = cw.tags.filter(t => t !== tag);
+const handleRemoveTag = async (id: string, tag: string) => {
+  await coursewareStore.removeTag(id, tag);
+};
+
+const handleDeleteCourseware = (id: string) => {
+  Modal.confirm({
+    title: '确定要删除这个课件吗？',
+    icon: createVNode(ExclamationCircleOutlined),
+    content: '删除后无法恢复，请谨慎操作。',
+    okText: '确定删除',
+    okType: 'danger',
+    cancelText: '取消',
+    async onOk() {
+      await coursewareStore.deleteCourseware(id);
+      message.success('已移至回收站');
+    },
+  });
+};
+
+const newCourseModalVisible = ref(false);
+const creatingCourse = ref(false);
+const formState = ref({
+  title: '',
+  subject: undefined,
+  grade: undefined
+});
+
+const openNewCourseModal = () => {
+  formState.value = { title: '', subject: undefined, grade: undefined };
+  newCourseModalVisible.value = true;
+};
+
+const closeNewCourseModal = () => {
+  newCourseModalVisible.value = false;
+};
+
+const createNewCourse = async () => {
+  if (!formState.value.title) {
+    message.warning('请输入课件名称');
+    return;
+  }
+  creatingCourse.value = true;
+  try {
+    await coursewareStore.createCourseware(formState.value);
+    newCourseModalVisible.value = false;
+    router.push('/cocreation');
+  } finally {
+    creatingCourse.value = false;
   }
 };
 </script>
@@ -212,8 +293,8 @@ const handleRemoveTag = (id: string, tag: string) => {
 
 .grid-view {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
 }
 
 .cw-card {
@@ -221,10 +302,17 @@ const handleRemoveTag = (id: string, tag: string) => {
   overflow: hidden;
   background: var(--app-panel);
   border: 1px solid var(--app-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.cw-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 .cover-img {
-  height: 160px;
+  height: 130px;
   background: #E0F2FE;
   display: flex;
   align-items: center;
@@ -235,18 +323,31 @@ const handleRemoveTag = (id: string, tag: string) => {
 }
 
 .tags-area {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .card-actions {
-  margin-top: 16px;
+  margin-top: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   color: var(--app-text-sub);
-  font-size: 13px;
+  font-size: 12px;
   border-top: 1px solid var(--app-border);
-  padding-top: 12px;
+  padding-top: 8px;
+}
+
+:deep(.ant-card-body) {
+  padding: 12px;
+}
+
+:deep(.ant-card-meta-title) {
+  font-size: 15px !important;
+  margin-bottom: 4px !important;
+}
+
+:deep(.ant-card-meta-description) {
+  font-size: 12px !important;
 }
 
 .list-view {

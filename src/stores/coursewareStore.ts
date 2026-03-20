@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Courseware } from '../types/types'
-import { apiGetCoursewares, apiCreateCourseware } from '../api/courseware'
+import { apiGetCoursewares, apiCreateCourseware, apiUpdateCourseware, apiDeleteCourseware } from '../api/courseware'
 import { v4 as uuidv4 } from 'uuid'
 import dayjs from 'dayjs'
 
@@ -62,5 +62,51 @@ export const useCoursewareStore = defineStore('courseware', () => {
     }
   }
 
-  return { coursewares, loadCoursewares, createCourseware }
+  const updateCourseware = async (id: string, data: Partial<Courseware>) => {
+    try {
+      await apiUpdateCourseware(id, data)
+      const index = coursewares.value.findIndex(c => c.id === id)
+      if (index > -1) {
+        coursewares.value[index] = { ...coursewares.value[index], ...data } as Courseware
+      }
+    } catch {
+      const index = coursewares.value.findIndex(c => c.id === id)
+      if (index > -1) {
+        coursewares.value[index] = { ...coursewares.value[index], ...data } as Courseware
+      }
+    }
+  }
+
+  const deleteCourseware = async (id: string) => {
+    try {
+      await apiDeleteCourseware(id)
+      const index = coursewares.value.findIndex(c => c.id === id)
+      if (index > -1) {
+        coursewares.value.splice(index, 1)
+      }
+    } catch {
+      const index = coursewares.value.findIndex(c => c.id === id)
+      if (index > -1) {
+        coursewares.value.splice(index, 1)
+      }
+    }
+  }
+
+  const addTag = async (id: string, tag: string) => {
+    const cw = coursewares.value.find(c => c.id === id)
+    if (cw && !cw.tags.includes(tag)) {
+      const newTags = [...cw.tags, tag]
+      await updateCourseware(id, { tags: newTags })
+    }
+  }
+
+  const removeTag = async (id: string, tag: string) => {
+    const cw = coursewares.value.find(c => c.id === id)
+    if (cw) {
+      const newTags = cw.tags.filter(t => t !== tag)
+      await updateCourseware(id, { tags: newTags })
+    }
+  }
+
+  return { coursewares, loadCoursewares, createCourseware, updateCourseware, deleteCourseware, addTag, removeTag }
 })
