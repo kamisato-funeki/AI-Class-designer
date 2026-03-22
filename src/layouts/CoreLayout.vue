@@ -63,7 +63,7 @@
 
       <!-- Bottom Modules -->
       <div class="bottom-menu">
-        <a-menu theme="light" mode="inline" style="border-right: none" @click="handleMenuClick">
+        <a-menu v-model:selectedKeys="selectedKeys" theme="light" mode="inline" style="border-right: none" @click="handleMenuClick">
           <a-menu-item key="profile">
             <template #icon>
               <UserOutlined />
@@ -153,7 +153,7 @@
         <a-form-item label="课件名称" required>
           <a-input v-model:value="formState.title" placeholder="请输入课件名称" />
         </a-form-item>
-        <a-form-item label="适用科目">
+        <a-form-item label="适用科目" required>
           <a-select v-model:value="formState.subject" placeholder="请选择科目">
             <a-select-option value="语文">语文</a-select-option>
             <a-select-option value="数学">数学</a-select-option>
@@ -161,7 +161,7 @@
             <a-select-option value="综合">综合</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="适用年级">
+        <a-form-item label="适用年级" required>
           <a-select v-model:value="formState.grade" placeholder="请选择年级">
             <a-select-option value="一年级">一年级</a-select-option>
             <a-select-option value="二年级">二年级</a-select-option>
@@ -177,8 +177,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { message } from 'ant-design-vue';
 import {
   HomeOutlined,
   TeamOutlined,
@@ -198,6 +199,7 @@ import { useCoursewareStore } from '../stores/coursewareStore';
 import { useSettingsStore } from '../stores/settingsStore';
 
 const router = useRouter();
+const route = useRoute();
 const userStore = useUserStore();
 const coursewareStore = useCoursewareStore();
 const settingsStore = useSettingsStore();
@@ -206,6 +208,17 @@ const selectedKeys = ref<string[]>(['workspace']);
 const newCourseModalVisible = ref<boolean>(false);
 const creatingCourse = ref<boolean>(false);
 const isMobile = ref<boolean>(false);
+
+watch(() => route.path, (newPath) => {
+  if (newPath === '/') selectedKeys.value = ['workspace'];
+  else if (newPath.startsWith('/classes')) selectedKeys.value = ['classes'];
+  else if (newPath.startsWith('/rag')) selectedKeys.value = ['rag'];
+  else if (newPath.startsWith('/courseware')) selectedKeys.value = ['courseware'];
+  else if (newPath.startsWith('/design') || newPath.startsWith('/cocreation')) selectedKeys.value = ['design-center'];
+  else if (newPath.startsWith('/settings')) selectedKeys.value = ['settings'];
+  else if (newPath.startsWith('/profile')) selectedKeys.value = ['profile'];
+  else if (newPath.startsWith('/messages')) selectedKeys.value = ['messages'];
+}, { immediate: true });
 
 const formState = ref({
   title: '',
@@ -272,12 +285,15 @@ const closeNewCourseModal = () => {
 };
 
 const createNewCourse = async () => {
-  if (!formState.value.title) return;
+  if (!formState.value.title || !formState.value.subject || !formState.value.grade) {
+    message.warning('名称、科目和年级为必填项');
+    return;
+  }
   creatingCourse.value = true;
   try {
-    await coursewareStore.createCourseware(formState.value);
+    const newCw = await coursewareStore.createCourseware(formState.value);
     newCourseModalVisible.value = false;
-    router.push('/cocreation');
+    router.push(`/cocreation?id=${newCw.id}`);
   } finally {
     creatingCourse.value = false;
   }

@@ -11,6 +11,9 @@ export const useCocreationStore = defineStore('cocreation', () => {
   const currentCoursewareId = ref<string>('')
   const materials = ref<BoardMaterial[]>([])
   const chatHistory = ref<ChatMessage[]>([])
+  const isGenerating = ref<boolean>(false)
+  const materialGenerated = ref<boolean>(false)
+  const hideSummary = ref<boolean>(false)
 
   const loadMaterials = async (id: string) => {
     currentCoursewareId.value = id
@@ -66,5 +69,8 @@ export const useCocreationStore = defineStore('cocreation', () => {
     sendChatMessage,
     addMessage,
     updateLastMessage,
+    isGenerating,
+    materialGenerated,
+    hideSummary,
   }
 })

@@ -106,7 +106,7 @@
           <a-form-item label="课件名称" required>
             <a-input v-model:value="formState.title" placeholder="请输入课件名称" />
           </a-form-item>
-          <a-form-item label="适用科目">
+          <a-form-item label="适用科目" required>
             <a-select v-model:value="formState.subject" placeholder="请选择科目">
               <a-select-option value="语文">语文</a-select-option>
               <a-select-option value="数学">数学</a-select-option>
@@ -114,7 +114,7 @@
               <a-select-option value="综合">综合</a-select-option>
             </a-select>
           </a-form-item>
-          <a-form-item label="适用年级">
+          <a-form-item label="适用年级" required>
             <a-select v-model:value="formState.grade" placeholder="请选择年级">
               <a-select-option value="一年级">一年级</a-select-option>
               <a-select-option value="二年级">二年级</a-select-option>
@@ -250,15 +250,15 @@ const closeNewCourseModal = () => {
 };
 
 const createNewCourse = async () => {
-  if (!formState.value.title) {
-    message.warning('请输入课件名称');
+  if (!formState.value.title || !formState.value.subject || !formState.value.grade) {
+    message.warning('名称、科目和年级为必填项');
     return;
   }
   creatingCourse.value = true;
   try {
-    await coursewareStore.createCourseware(formState.value);
+    const newCw = await coursewareStore.createCourseware(formState.value);
     newCourseModalVisible.value = false;
-    router.push('/cocreation');
+    router.push(`/cocreation?id=${newCw.id}`);
   } finally {
     creatingCourse.value = false;
   }

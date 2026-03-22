@@ -31,15 +31,15 @@
         </div>
       </div>
 
-      <a-textarea v-model:value="inputValue" placeholder="输入课程主题，或拖拽上传参考文件 (word/ppt/pdf/图片)..." :bordered="false"
+      <a-textarea v-model:value="inputValue" placeholder="输入名称或课程主题，或拖拽上传参考文件 (word/ppt/pdf/图片)..." :bordered="false"
                   :auto-size="{ minRows: 4, maxRows: 9 }" class="main-input" />
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
         <a-space>
           <a-tooltip title="语音输入">
-            <a-button shape="circle" size="large" @click="handleVoiceInput" :loading="isRecording">
+            <a-button shape="circle" size="large" @click="handleVoiceInput" :danger="isRecording">
               <template #icon>
-                <AudioOutlined v-if="!isRecording" />
+                <AudioOutlined />
               </template>
             </a-button>
           </a-tooltip>
@@ -85,31 +85,51 @@ import {
   DeleteOutlined
 } from '@ant-design/icons-vue';
 import { v4 as uuidv4 } from 'uuid';
-import { useWorkspaceStore } from '../../stores/workspaceStore';
+import { useCoursewareStore } from '../../stores/coursewareStore';
 
 const router = useRouter();
-const workspaceStore = useWorkspaceStore();
+const coursewareStore = useCoursewareStore();
 
+import { startVoiceToText, type VttSession } from '../../utils/vTt';
 const inputValue = ref('');
 const subject = ref(null);
 const grade = ref(null);
 const isRecording = ref(false);
 
-const handleVoiceInput = () => {
-  if (isRecording.value) return;
-  isRecording.value = true;
-  message.loading({ content: '正在录音... 请说话 (模拟)', key: 'voice', duration: 2 });
-  setTimeout(async () => {
+let vttSession: VttSession | null = null;
+const handleVoiceInput = async () => {
+  if (isRecording.value) {
+    vttSession?.stop();
     isRecording.value = false;
-    const res = await workspaceStore.uploadVoice(new File([''], 'voice.wav'));
-    inputValue.value += ` ${res.text} `;
-    message.success({ content: '语音识别完成', key: 'voice', duration: 2 });
-  }, 2000);
+    return;
+  }
+  isRecording.value = true;
+  message.loading({ content: '正在录音...再次点击结束', key: 'voice', duration: 0 });
+  try {
+    const originalInput = inputValue.value;
+    vttSession = await startVoiceToText({
+      onToken: (text) => {
+        inputValue.value = (originalInput + ' ' + text).trim();
+      },
+      onComplete: () => {
+        isRecording.value = false;
+        message.success({ content: '语音识别完成', key: 'voice', duration: 2 });
+      },
+      onError: (err) => {
+        isRecording.value = false;
+        message.error({ content: `录音识别失败: ${err}`, key: 'voice', duration: 3 });
+      }
+    });
+  } catch {
+    isRecording.value = false;
+    message.error({ content: '启动麦克风失败', key: 'voice', duration: 2 });
+  }
 };
 
 const uploadedFiles = ref<{ id: string, name: string, type: string, raw: File, dataUrl?: string }[]>([]);
 const isDragging = ref(false);
 let dragCounter = 0;
+
 
 const handleDragEnter = () => {
   dragCounter++;
@@ -170,12 +190,25 @@ const removeFile = (id: string) => {
   uploadedFiles.value = uploadedFiles.value.filter(f => f.id !== id);
 };
 
-const handleSend = () => {
-  if (!inputValue.value.trim() && uploadedFiles.value.length === 0) {
-    message.warning('请输入课程主题或上传参考材料');
+const handleSend = async () => {
+  if (!inputValue.value.trim() || !subject.value || !grade.value) {
+    message.warning('名称、科目和年级为必填项');
     return;
   }
-  router.push('/cocreation');
+  
+  const subjectLabel = options.find(o => o.value === subject.value)?.label || '通用';
+  const gradeLabel = options2.find(o => o.value === grade.value)?.label || '通用';
+  
+  try {
+    const newCw = await coursewareStore.createCourseware({
+      title: inputValue.value.trim(),
+      subject: subjectLabel,
+      grade: gradeLabel
+    });
+    router.push(`/cocreation?id=${newCw.id}`);
+  } catch {
+    message.error('创建失败');
+  }
 };
 
 const options = [
