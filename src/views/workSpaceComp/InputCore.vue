@@ -1,3 +1,10 @@
+<!--
+  工作台 - 核心 AI 指令输入入口 (InputCore)
+  业务逻辑：
+  1. 提供高颜值的磨砂玻璃风格输入框，作为课件创作的起点。
+  2. 整合文字输入、拖拽上传参考文件、语音输入等多种交互形式。
+  3. 联动科目与年级选择，快速初始化课件共创任务并跳转至生成页面。
+-->
 <template>
   <div class="input-core-container">
     <div class="marquee-border"></div>
@@ -75,27 +82,33 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import {
-  AudioOutlined,
-  PaperClipOutlined,
-  SendOutlined,
-  FileWordOutlined,
-  FilePdfOutlined,
-  FilePptOutlined,
-  FileOutlined,
+  AudioOutlined, PaperClipOutlined, SendOutlined,
+  FileWordOutlined, FilePdfOutlined, FilePptOutlined, FileOutlined,
   DeleteOutlined
 } from '@ant-design/icons-vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useCoursewareStore } from '../../stores/coursewareStore';
-
-const router = useRouter();
-const coursewareStore = useCoursewareStore();
-
 import { startVoiceToText, type VttSession } from '../../utils/vTt';
-const inputValue = ref('');
-const subject = ref(null);
-const grade = ref(null);
-const isRecording = ref(false);
 
+/**
+ * 状态仓库与路由初始化
+ */
+const router = useRouter();
+const coursewareStore = useCoursewareStore(); // 课件资产管理仓库
+
+/**
+ * 【响应式变量】表单与 UI 状态
+ */
+const inputValue = ref('');       // 主输入框：咒语/课程主题
+const subject = ref(null);        // 已选科目 ID
+const grade = ref(null);          // 已选年级 ID
+const isRecording = ref(false);   // 是否正在进行语音采集
+const isDragging = ref(false);    // 拖拽上传遮罩开关
+let dragCounter = 0;              // 抵消子组件触发的频繁 DragLeave
+
+/**
+ * 【语音识别处理】
+ */
 let vttSession: VttSession | null = null;
 const handleVoiceInput = async () => {
   if (isRecording.value) {
@@ -109,6 +122,7 @@ const handleVoiceInput = async () => {
     const originalInput = inputValue.value;
     vttSession = await startVoiceToText({
       onToken: (text) => {
+        // 实时追加识别结果到输入框末尾
         inputValue.value = (originalInput + ' ' + text).trim();
       },
       onComplete: () => {
@@ -126,35 +140,29 @@ const handleVoiceInput = async () => {
   }
 };
 
+/**
+ * 【文件附件管理】
+ */
 const uploadedFiles = ref<{ id: string, name: string, type: string, raw: File, dataUrl?: string }[]>([]);
-const isDragging = ref(false);
-let dragCounter = 0;
 
-
-const handleDragEnter = () => {
-  dragCounter++;
-  isDragging.value = true;
-};
-
-const handleDragLeave = () => {
-  dragCounter--;
-  if (dragCounter === 0) {
-    isDragging.value = false;
-  }
-};
-
+const handleDragEnter = () => { dragCounter++; isDragging.value = true; };
+const handleDragLeave = () => { dragCounter--; if (dragCounter === 0) isDragging.value = false; };
 const handleDrop = (e: DragEvent) => {
   dragCounter = 0;
   isDragging.value = false;
-  const files = Array.from(e.dataTransfer?.files || []);
-  handleFiles(files);
+  handleFiles(Array.from(e.dataTransfer?.files || []));
 };
 
 const handleUpload = (file: File) => {
   handleFiles([file]);
-  return false; // Prevent auto upload
+  return false; // 拦截默认上传动作
 };
 
+/**
+ * 【函数】handleFiles
+ * 作用：处理文件入队
+ * 业务逻辑：校验后缀，如果是图片则通过 FileReader 生成 Base64/DataURL 以供本地实时预览。
+ */
 const handleFiles = (files: File[]) => {
   files.forEach(file => {
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
@@ -167,21 +175,12 @@ const handleFiles = (files: File[]) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         uploadedFiles.value.push({
-          id: uuidv4(),
-          name: file.name,
-          type: ext,
-          raw: file,
-          dataUrl: e.target?.result as string
+          id: uuidv4(), name: file.name, type: ext, raw: file, dataUrl: e.target?.result as string
         });
       };
       reader.readAsDataURL(file);
     } else {
-      uploadedFiles.value.push({
-        id: uuidv4(),
-        name: file.name,
-        type: ext,
-        raw: file
-      });
+      uploadedFiles.value.push({ id: uuidv4(), name: file.name, type: ext, raw: file });
     }
   });
 };
@@ -190,6 +189,14 @@ const removeFile = (id: string) => {
   uploadedFiles.value = uploadedFiles.value.filter(f => f.id !== id);
 };
 
+/**
+ * 【核心业务函数】handleSend
+ * 作用：确认指令并生成课件
+ * 业务逻辑：
+ * 1. 非空校验（标题、科目、年级均为必填）。
+ * 2. 调用 `coursewareStore.createCourseware` 全新创建一份课件元数据。
+ * 3. 成功后携带课件 ID 跳转至 `/cocreation` 页面开启后续 AI 对话流。
+ */
 const handleSend = async () => {
   if (!inputValue.value.trim() || !subject.value || !grade.value) {
     message.warning('名称、科目和年级为必填项');
@@ -211,30 +218,28 @@ const handleSend = async () => {
   }
 };
 
+/**
+ * 下拉选择配置
+ */
 const options = [
   { value: 'math', label: '数学' },
   { value: 'chinese', label: '语文' },
   { value: 'english', label: '英语' },
   { value: 'comprehensive', label: '综合' },
 ];
+
+const options2 = [
+  { value: '1', label: '一年级' }, { value: '2', label: '二年级' },
+  { value: '3', label: '三年级' }, { value: '4', label: '四年级' },
+  { value: '5', label: '五年级' }, { value: '6', label: '六年级' },
+  { value: '7', label: '七年级' }, { value: '8', label: '八年级' },
+  { value: '9', label: '九年级' }, { value: '10', label: '十年级' },
+  { value: '11', label: '十一级' }, { value: '12', label: '十二级' },
+];
+
 const filterOption = (input: string, option: { label: string }) => {
   return option.label.toLowerCase().includes(input.toLowerCase());
 };
-
-const options2 = [
-  { value: '1', label: '一年级' },
-  { value: '2', label: '二年级' },
-  { value: '3', label: '三年级' },
-  { value: '4', label: '四年级' },
-  { value: '5', label: '五年级' },
-  { value: '6', label: '六年级' },
-  { value: '7', label: '七年级' },
-  { value: '8', label: '八年级' },
-  { value: '9', label: '九年级' },
-  { value: '10', label: '十年级' },
-  { value: '11', label: '十一级' },
-  { value: '12', label: '十二级' },
-];
 </script>
 
 <style scoped>

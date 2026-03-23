@@ -1,9 +1,18 @@
+<!--
+  我的课件页面 (CoursewareView)
+  业务逻辑：
+  1. 展示用户创建的所有课件列表，支持网格(Grid)和列表(List)两种查看模式。
+  2. 提供课件搜索、按科目过滤以及排序功能。
+  3. 支持课件标签管理（添加、删除）。
+  4. 集成课件的基本操作：继续编辑、移动到回收站、新建课件。
+-->
 <template>
   <a-spin :spinning="loading">
     <div class="courseware-container">
       <div class="page-header">
         <h2>我的课件</h2>
         <a-space>
+          <!-- 视图模式切换 -->
           <a-radio-group v-model:value="viewMode">
             <a-radio-button value="grid">
               <AppstoreOutlined />
@@ -16,6 +25,7 @@
         </a-space>
       </div>
 
+      <!-- 筛选与搜索栏 -->
       <div class="filter-bar">
         <a-input-search v-model:value="searchKeyword" placeholder="搜索课件名称..." style="width: 300px" />
         <a-select v-model:value="filterSubject" style="width: 120px; margin-left:16px">
@@ -98,7 +108,7 @@
         <a-input-search v-model:value="newTagValue" placeholder="输入新标签" enter-button="添加" @search="handleAddTag" />
       </a-modal>
 
-      <!-- New Course Modal -->
+      <!-- 新建课件弹窗 -->
       <a-modal v-model:open="newCourseModalVisible" title="新建课件" @ok="createNewCourse" @cancel="closeNewCourseModal"
         :confirmLoading="creatingCourse">
         <a-form layout="vertical" :model="formState">
@@ -115,21 +125,7 @@
           </a-form-item>
           <a-form-item label="适用年级" required>
             <a-select v-model:value="formState.grade" placeholder="请选择年级">
-              <a-select-option value="一年级">一年级</a-select-option>
-              <a-select-option value="二年级">二年级</a-select-option>
-              <a-select-option value="三年级">三年级</a-select-option>
-              <a-select-option value="四年级">四年级</a-select-option>
-              <a-select-option value="五年级">五年级</a-select-option>
-              <a-select-option value="六年级">六年级</a-select-option>
-            </a-select>
-          </a-form-item>
-        </a-form>
-      </a-modal>
-    </div>
-  </a-spin>
-</template>
-
-<script setup lang="ts">
+      <script setup lang="ts">
 import { ref, computed, onMounted, createVNode } from 'vue';
 import { message, Modal } from 'ant-design-vue';
 import { useRouter } from 'vue-router';
@@ -142,15 +138,30 @@ import {
 } from '@ant-design/icons-vue';
 import { useCoursewareStore } from '../stores/coursewareStore';
 
-const router = useRouter();
-const coursewareStore = useCoursewareStore();
-const viewMode = ref('grid');
-const loading = ref(true);
+/**
+ * 核心状态与路由初始化
+ */
+const router = useRouter(); // 路由控制器：实现页面间的逻辑跳转
+const coursewareStore = useCoursewareStore(); // 课件数据仓库：封装了课件的增删改查及标签管理逻辑
 
-const searchKeyword = ref('');
-const filterSubject = ref('all');
-const sortOrder = ref('newest');
+/**
+ * 【响应式变量】UI 布局与显示状态
+ */
+const viewMode = ref('grid'); // 视图展示模式：'grid'(网格卡片预览) / 'list'(传统表格列表)
+const loading = ref(true);    // 全局数据加载状态遮罩控制
 
+/**
+ * 【响应式变量】搜索、过滤与排序条件
+ */
+const searchKeyword = ref('');    // 课件搜索关键词（双向绑定）
+const filterSubject = ref('all'); // 当前选中的科目分类过滤项（如：数学、语文）
+const sortOrder = ref('newest');  // 列表排序规则：'newest'(按更新时间降序) / 'name'(按标题升序)
+
+/**
+ * 【生命周期钩子】onMounted
+ * 作用：页面入场初始化
+ * 业务逻辑：同步驱动 store 从持久层（模拟数据）加载全量课件列表
+ */
 onMounted(() => {
   loading.value = true;
   coursewareStore.loadCoursewares().finally(() => {
@@ -158,32 +169,55 @@ onMounted(() => {
   });
 });
 
+/**
+ * 【计算属性】filteredCoursewares
+ * 作用：实时响应式的多维数据筛选与排序
+ * 算法逻辑：
+ * 1. 过滤：先匹配科目类型，再进行标题字符串的模糊命配（不区分大小写）。
+ * 2. 排序：根据 sortOrder 的值，执行字符串比较或时间戳数值比对。
+ * @returns 经过处理后的课件数组供视图渲染使用
+ */
 const filteredCoursewares = computed(() => {
   let list = coursewareStore.coursewares;
+  
+  // 1. 科目路由过滤
   if (filterSubject.value !== 'all') {
     list = list.filter(c => c.subject === filterSubject.value);
   }
+  
+  // 2. 标题模糊搜索匹配
   if (searchKeyword.value) {
     list = list.filter(c => c.title.toLowerCase().includes(searchKeyword.value.toLowerCase()));
   }
+  
   const result = [...list];
+  
+  // 3. 多维排序执行
   if (sortOrder.value === 'name') {
     result.sort((a, b) => a.title.localeCompare(b.title));
   } else {
-    // mock sort by time
+    // 默认按更新时间戳降序排列
     result.sort((a, b) => new Date(b.updateTime).getTime() - new Date(a.updateTime).getTime());
   }
   return result;
 });
 
+/**
+ * 【表格配置】columns
+ * 作用：Ant Design Vue 表格的列元数据定义
+ */
 const columns = [
-  { title: '标题', dataIndex: 'title', key: 'title' },
-  { title: '科目/年级', dataIndex: 'subject', key: 'subject' },
-  { title: '标签', dataIndex: 'tags', key: 'tags' },
-  { title: '最后编辑', dataIndex: 'time', key: 'time' },
-  { title: '操作', key: 'action' },
+  { title: '课件标题', dataIndex: 'title', key: 'title' },
+  { title: '科目与年级', dataIndex: 'subject', key: 'subject' },
+  { title: '业务标签', dataIndex: 'tags', key: 'tags' },
+  { title: '最后修改时间', dataIndex: 'time', key: 'time' },
+  { title: '操作选项', key: 'action' },
 ];
 
+/**
+ * 【计算属性】listDataSource
+ * 作用：为 Table 组件提供高度兼容的数据源格式映射
+ */
 const listDataSource = computed(() => {
   return filteredCoursewares.value.map(c => ({
     key: c.id,
@@ -194,28 +228,121 @@ const listDataSource = computed(() => {
   }));
 });
 
-const tagModalVisible = ref(false);
-const newTagValue = ref('');
-const currentCwId = ref('');
+/**
+ * 【标签管理相关变量与控制】
+ */
+const tagModalVisible = ref(false); // “添加标签”浮层显示状态
+const newTagValue = ref('');       // 暂存用户输入的新标签文本
+const currentCwId = ref('');       // 后端/Store 调用时的上下文对象 ID
 
+/**
+ * 【函数】openTagModal
+ * 作用：记录上下文 ID 开启标签注入弹窗
+ * @param id 目标课件 ID
+ */
 const openTagModal = (id: string) => {
   currentCwId.value = id;
   newTagValue.value = '';
   tagModalVisible.value = true;
 };
 
+/**
+ * 【函数】handleAddTag
+ * 作用：驱动业务逻辑进行标签持久化存储
+ */
 const handleAddTag = async () => {
   if (newTagValue.value && currentCwId.value) {
-    await coursewareStore.addTag(currentCwId.value, newTagValue.value);
-    message.success('标签添加成功');
+    await coursewareStore.addTag(currentCwId.value, newTagValue.value.trim());
+    message.success('已添加新标签');
     newTagValue.value = '';
   }
 };
 
+/**
+ * 【函数】handleRemoveTag
+ * 作用：移除指定的业务标签
+ * @param id 课件 ID
+ * @param tag 被移除的标签名
+ */
 const handleRemoveTag = async (id: string, tag: string) => {
   await coursewareStore.removeTag(id, tag);
 };
 
+/**
+ * 【函数】handleDeleteCourseware
+ * 作用：执行课件的软删除（移入回收站）
+ * @param id 课件 ID
+ * 业务逻辑：通过 Modal 拦截高危操作，确保用户拥有二次确认路径
+ */
+const handleDeleteCourseware = (id: string) => {
+  Modal.confirm({
+    title: '确认要删除此课件吗？',
+    icon: createVNode(ExclamationCircleOutlined),
+    content: '该操作会将课件移至回收站，请确认是否继续。',
+    okText: '确认删除',
+    okType: 'danger',
+    cancelText: '取消',
+    async onOk() {
+      await coursewareStore.deleteCourseware(id);
+      message.success('已成功移至回收站');
+    },
+  });
+};
+
+/**
+ * 【课件创建流程变量】
+ */
+const newCourseModalVisible = ref(false); // “创建新课件”向导弹窗显隐
+const creatingCourse = ref(false);        // 提交接口的加载态锁定（防止重发）
+const formState = ref({                   // 创建表单的响应式状态集
+  title: '',     // 标题
+  subject: undefined, // 映射科目
+  grade: undefined    // 映射年级
+});
+
+/**
+ * 【函数】openNewCourseModal
+ * 作用：唤起创建流程
+ */
+const openNewCourseModal = () => {
+  formState.value = { title: '', subject: undefined, grade: undefined };
+  newCourseModalVisible.value = true;
+};
+
+/**
+ * 【函数】closeNewCourseModal
+ * 作用：关闭创建流程
+ */
+const closeNewCourseModal = () => {
+  newCourseModalVisible.value = false;
+};
+
+/**
+ * 【异步函数】createNewCourse
+ * 作用：正式执行新课件的创建逻辑
+ * 业务逻辑：
+ * 1. 本地校验必填项完整性。
+ * 2. 交互 Store 发起异步创建请求。
+ * 3. 成功后全屏重定向到共创编辑工作区。
+ */
+const createNewCourse = async () => {
+  if (!formState.value.title || !formState.value.subject || !formState.value.grade) {
+    return message.warning('请填写完整的课件信息（名称、科目、年级）');
+  }
+  creatingCourse.value = true;
+  try {
+    const newCw = await coursewareStore.createCourseware(formState.value);
+    newCourseModalVisible.value = false;
+    // 重定向至 AI 共创空间进行详细设计
+    router.push(`/cocreation?id=${newCw.id}`);
+  } finally {
+    creatingCourse.value = false;
+  }
+};
+</script>�删除操作（移入回收站）
+ * @param id 欲删除的课件 ID
+ * 业务逻辑：弹出二次确认框，防止用户误触删除
+ */
 const handleDeleteCourseware = (id: string) => {
   Modal.confirm({
     title: '确定要删除这个课件吗？',
@@ -231,23 +358,42 @@ const handleDeleteCourseware = (id: string) => {
   });
 };
 
-const newCourseModalVisible = ref(false);
-const creatingCourse = ref(false);
-const formState = ref({
-  title: '',
-  subject: undefined,
-  grade: undefined
+/**
+ * 【新建课件相关状态】
+ */
+const newCourseModalVisible = ref(false); // 控制“新建课件”弹窗
+const creatingCourse = ref(false);        // 新建过程中的提交按钮加载状态
+const formState = ref({                   // 新建课件表单的双向绑定对象
+  title: '',     // 课件标题
+  subject: undefined, // 适用科目
+  grade: undefined    // 适用年级
 });
 
+/**
+ * 【函数】openNewCourseModal
+ * 作用：重置表单并打开新建弹窗
+ */
 const openNewCourseModal = () => {
   formState.value = { title: '', subject: undefined, grade: undefined };
   newCourseModalVisible.value = true;
 };
 
+/**
+ * 【函数】closeNewCourseModal
+ * 作用：关闭新建弹窗
+ */
 const closeNewCourseModal = () => {
   newCourseModalVisible.value = false;
 };
 
+/**
+ * 【函数】createNewCourse
+ * 作用：执行新建课件的最终提交
+ * 业务逻辑：
+ * 1. 验证必填项。
+ * 2. 调用 store 创建新课件（模拟 API）。
+ * 3. 成功后自动跳转到该课件的协同创作页面。
+ */
 const createNewCourse = async () => {
   if (!formState.value.title || !formState.value.subject || !formState.value.grade) {
     message.warning('名称、科目和年级为必填项');

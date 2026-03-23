@@ -1,3 +1,10 @@
+<!--
+  工作台 - 教育新闻信息流组件 (EducationNewsSection)
+  业务逻辑：
+  1. 渲染从后端 API 获取的实时教育行业新闻。
+  2. 采用信息流布局，支持无限滚动（Infinite Scroll）加载更多。
+  3. 响应式图片布局：根据图片数量自动切换侧边展示或底部分栏展示。
+-->
 <template>
   <div class="news-section">
     <div class="section-header">
@@ -53,12 +60,24 @@ import { CloseOutlined } from '@ant-design/icons-vue';
 import { apiGetEducationNews } from '../../api/workspace';
 import type { EducationNews } from '../../types/types';
 
-const newsList = ref<EducationNews[]>([]);
-const loading = ref(false);
-const hasMore = ref(true);
-const page = ref(1);
-const size = 10;
+/**
+ * 【响应式变量】新闻数据与加载状态
+ */
+const newsList = ref<EducationNews[]>([]); // 累计获取的新闻列表
+const loading = ref(false);               // 分页加载锁，防止并发请求
+const hasMore = ref(true);                // 标记后端是否还有剩余数据
+const page = ref(1);                      // 当前请求的页码偏移
+const size = 10;                          // 单次分页大小
 
+/**
+ * 【异步函数】loadMore
+ * 作用：核心分页加载逻辑
+ * 业务逻辑：
+ * 1. 检查加载锁 `loading` 与 `hasMore` 标志位。
+ * 2. 调用 API 获取对应页码的教育新闻。
+ * 3. 将新数据 push 到 `newsList` 实现无限滚动效果。
+ * 4. 根据返回的总量判断是否将 `hasMore` 置为 false。
+ */
 const loadMore = async () => {
   if (loading.value || !hasMore.value) return;
   loading.value = true;
@@ -80,6 +99,9 @@ const loadMore = async () => {
   }
 };
 
+/**
+ * 初始化加载首屏数据
+ */
 onMounted(() => {
   loadMore();
 });

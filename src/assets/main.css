@@ -1,47 +1,70 @@
+/* =====================================================
+ * main.css — 全局主题样式 & 工具类
+ * 职责：
+ *   1. 引入 Google Fonts（Fira Code / Fira Sans）
+ *   2. 定义全局设计令牌（颜色、阴影、圆角、间距）
+ *   3. 提供亮色/暗色主题的语义化 CSS 变量切换
+ *   4. 全局滚动条极简化样式
+ *   5. 通用工具类
+ * ===================================================== */
+
+/* 引入 Google Fonts：代码字体 Fira Code、正文字体 Fira Sans */
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
 
+/* -----------------------------------------------
+ * 全局设计令牌（Design Tokens）
+ * 以组件开头的 CSS 变量，供全局引用
+ * ----------------------------------------------- */
 :root {
-  /* Color Palette */
-  --color-primary: #0891b2;
-  --color-secondary: #22d3ee;
-  --color-cta: #22c55e;
-  --color-background-light: #fcfcfd;
-  --color-panel-light: #ffffff;
-  --color-panel-light-2: #fefcfc;
-  --color-panel-light-3: #f3f3f3;
-  --color-text-main-light: #1f2937;
-  --color-text-sub-light: #6b7280;
-  --color-hover-light: #f9fafb;
-  --color-border-light: #f3f4f6;
+  /* === 色彩调色板 === */
+  --color-primary: #0891b2;           /* 主色（青色）*/
+  --color-secondary: #22d3ee;         /* 辅色（浅青）*/
+  --color-cta: #22c55e;               /* 行动召唤按钮色（绿色）*/
 
-  --color-background-dark: #111827;
-  --color-panel-dark: #1f2937;
-  --color-text-main-dark: #f9fafb;
-  --color-text-sub-dark: #9ca3af;
-  --color-hover-dark: #374151;
-  --color-border-dark: #4b5563;
+  /* 亮色主题基础颜色 */
+  --color-background-light: #fcfcfd;  /* 亮色背景 */
+  --color-panel-light: #ffffff;       /* 亮色卡片/面板背景 */
+  --color-panel-light-2: #fefcfc;     /* 亮色次级面板背景 */
+  --color-panel-light-3: #f3f3f3;     /* 亮色三级面板背景 */
+  --color-text-main-light: #1f2937;   /* 亮色主文字 */
+  --color-text-sub-light: #6b7280;    /* 亮色副文字（弱强调）*/
+  --color-hover-light: #f9fafb;       /* 亮色悬停背景 */
+  --color-border-light: #f3f4f6;      /* 亮色边框 */
 
-  /* Shadow */
-  --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.05);
-  --shadow-dark: 0 4px 12px rgba(255, 255, 255, 0.03);
+  /* 暗色主题基础颜色 */
+  --color-background-dark: #111827;   /* 暗色背景 */
+  --color-panel-dark: #1f2937;        /* 暗色卡片/面板背景 */
+  --color-text-main-dark: #f9fafb;    /* 暗色主文字 */
+  --color-text-sub-dark: #9ca3af;     /* 暗色副文字 */
+  --color-hover-dark: #374151;        /* 暗色悬停背景 */
+  --color-border-dark: #4b5563;       /* 暗色边框 */
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+  /* === 阴影系统 === */
+  --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.05);           /* 亮色卡片阴影 */
+  --shadow-dark: 0 4px 12px rgba(255, 255, 255, 0.03);       /* 暗色卡片阴影 */
 
-  --border-radius: 12px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);               /* 极小阴影 */
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);                /* 中等阴影 */
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);              /* 大阴影 */
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);             /* 超大阴影（弹窗等）*/
 
-  /* Spacing */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
-  --space-2xl: 48px;
-  --space-3xl: 64px;
+  /* === 圆角 === */
+  --border-radius: 12px; /* 卡片通用圆角 */
+
+  /* === 间距系统（8px 基数）=== */
+  --space-xs: 4px;   /* 极小间距 */
+  --space-sm: 8px;   /* 小间距 */
+  --space-md: 16px;  /* 中间距 */
+  --space-lg: 24px;  /* 大间距 */
+  --space-xl: 32px;  /* 超大间距 */
+  --space-2xl: 48px; /* 2倍超大间距 */
+  --space-3xl: 64px; /* 3倍超大间距 */
 }
 
+/* -----------------------------------------------
+ * body 字体配置
+ * 优先使用 Fira Sans，回退到系统字体栈
+ * ----------------------------------------------- */
 body {
   font-family:
     'Fira Sans',
@@ -61,24 +84,29 @@ body {
   color: var(--color-text-main-light);
   margin: 0;
   padding: 0;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;        /* 字体平滑（WebKit）*/
+  -moz-osx-font-smoothing: grayscale;         /* 字体平滑（Firefox macOS）*/
 }
 
-/* Light Theme Variables */
+/* -----------------------------------------------
+ * 亮色主题变量（body[data-theme='light']）
+ * 通过在 body 上切换 data-theme 属性动态应用
+ * ----------------------------------------------- */
 body[data-theme='light'] {
-  --app-bg: var(--color-background-light);
-  --app-panel: var(--color-panel-light);
-  --app-text-main: var(--color-text-main-light);
-  --app-text-sub: var(--color-text-sub-light);
-  --app-hover: var(--color-hover-light);
-  --app-border: var(--color-border-light);
-  --app-shadow: var(--shadow-light);
+  --app-bg: var(--color-background-light);     /* 应用整体背景 */
+  --app-panel: var(--color-panel-light);       /* 卡片/侧边栏面板背景 */
+  --app-text-main: var(--color-text-main-light); /* 主文字颜色 */
+  --app-text-sub: var(--color-text-sub-light); /* 副文字颜色 */
+  --app-hover: var(--color-hover-light);       /* 悬停高亮背景 */
+  --app-border: var(--color-border-light);     /* 通用边框颜色 */
+  --app-shadow: var(--shadow-light);           /* 通用阴影 */
   background-color: var(--app-bg);
   color: var(--app-text-main);
 }
 
-/* Dark Theme Variables */
+/* -----------------------------------------------
+ * 暗色主题变量（body[data-theme='dark']）
+ * ----------------------------------------------- */
 body[data-theme='dark'] {
   --app-bg: var(--color-background-dark);
   --app-panel: var(--color-panel-dark);
@@ -91,39 +119,50 @@ body[data-theme='dark'] {
   color: var(--app-text-main);
 }
 
-/* Utilities */
+/* -----------------------------------------------
+ * 通用工具类
+ * ----------------------------------------------- */
+/* 鼠标指针为手型 */
 .cursor-pointer {
   cursor: pointer;
 }
+
+/* 通用过渡动效 */
 .transition-all {
   transition: all 0.2s ease-in-out;
 }
 
-/* Minimalist Global Scrollbar */
+/* -----------------------------------------------
+ * 全局极简滚动条样式
+ * 平时不可见，鼠标悬停时显示半透明滚动条
+ * ----------------------------------------------- */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
-  background-color: transparent;
+  background-color: transparent; /* 滚动轨道透明 */
 }
 
 ::-webkit-scrollbar-thumb {
   border-radius: 3px;
-  background-color: transparent;
+  background-color: transparent; /* 默认滚动指示器透明 */
 }
 
+/* 鼠标悬停时显示亮色滚动指示器 */
 :hover::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.2);
 }
 
-/* Dark mode scrollbar adaptation */
+/* 暗色模式下鼠标悬停滚动指示器 */
 body[data-theme='dark'] :hover::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
+/* 鼠标悬停在指示器上时颜色加深 */
 ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(0, 0, 0, 0.3);
 }
 
+/* 暗色模式下鼠标悬停在指示器上时颜色加亮 */
 body[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.3);
 }

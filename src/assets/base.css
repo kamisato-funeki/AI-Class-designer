@@ -1,41 +1,59 @@
-/* color palette from <https://github.com/vuejs/theme> */
+/* =====================================================
+ * base.css — 全局基础 CSS 变量 & 重置样式
+ * 来源：Vue 官方主题色板 (https://github.com/vuejs/theme)
+ * 用途：定义原始色板变量，以及全局盒子模型重置与 body 字体配置
+ * ===================================================== */
+
+/* -----------------------------------------------
+ * 原始色板（原子级变量）
+ * 以 --vt-c- 为前缀，供语义化变量引用
+ * ----------------------------------------------- */
 :root {
-  --vt-c-white: #ffffff;
-  --vt-c-white-soft: #f8f8f8;
-  --vt-c-white-mute: #f2f2f2;
+  /* 白色系 */
+  --vt-c-white: #ffffff;        /* 纯白 */
+  --vt-c-white-soft: #f8f8f8;   /* 柔白 */
+  --vt-c-white-mute: #f2f2f2;   /* 哑白 */
 
-  --vt-c-black: #181818;
-  --vt-c-black-soft: #222222;
-  --vt-c-black-mute: #282828;
+  /* 黑色系 */
+  --vt-c-black: #181818;        /* 深黑 */
+  --vt-c-black-soft: #222222;   /* 柔黑 */
+  --vt-c-black-mute: #282828;   /* 哑黑 */
 
+  /* 靛蓝色（主色调参考） */
   --vt-c-indigo: #2c3e50;
 
-  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);
-  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);
-  --vt-c-divider-dark-1: rgba(84, 84, 84, 0.65);
-  --vt-c-divider-dark-2: rgba(84, 84, 84, 0.48);
+  /* 分割线颜色 */
+  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);  /* 亮色模式分割线（深） */
+  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);  /* 亮色模式分割线（浅） */
+  --vt-c-divider-dark-1: rgba(84, 84, 84, 0.65);   /* 暗色模式分割线（深） */
+  --vt-c-divider-dark-2: rgba(84, 84, 84, 0.48);   /* 暗色模式分割线（浅） */
 
-  --vt-c-text-light-1: var(--vt-c-indigo);
-  --vt-c-text-light-2: rgba(60, 60, 60, 0.66);
-  --vt-c-text-dark-1: var(--vt-c-white);
-  --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
+  /* 文字颜色 */
+  --vt-c-text-light-1: var(--vt-c-indigo);              /* 亮色模式主文字 */
+  --vt-c-text-light-2: rgba(60, 60, 60, 0.66);          /* 亮色模式副文字 */
+  --vt-c-text-dark-1: var(--vt-c-white);               /* 暗色模式主文字 */
+  --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);        /* 暗色模式副文字 */
 }
 
-/* semantic color variables for this project */
+/* -----------------------------------------------
+ * 语义化变量（供组件/页面使用）
+ * 默认为亮色模式，@media 中覆盖为暗色
+ * ----------------------------------------------- */
 :root {
-  --color-background: var(--vt-c-white);
-  --color-background-soft: var(--vt-c-white-soft);
-  --color-background-mute: var(--vt-c-white-mute);
+  --color-background: var(--vt-c-white);          /* 页面背景色 */
+  --color-background-soft: var(--vt-c-white-soft);/* 柔和背景色 */
+  --color-background-mute: var(--vt-c-white-mute);/* 哑光背景色 */
 
-  --color-border: var(--vt-c-divider-light-2);
-  --color-border-hover: var(--vt-c-divider-light-1);
+  --color-border: var(--vt-c-divider-light-2);        /* 边框色 */
+  --color-border-hover: var(--vt-c-divider-light-1);  /* 悬停边框色 */
 
-  --color-heading: var(--vt-c-text-light-1);
-  --color-text: var(--vt-c-text-light-1);
+  --color-heading: var(--vt-c-text-light-1); /* 标题文字颜色 */
+  --color-text: var(--vt-c-text-light-1);    /* 正文文字颜色 */
 
-  --section-gap: 160px;
+  --section-gap: 160px; /* 章节间距 */
 }
 
+/* 暗色模式：使用 prefers-color-scheme 媒体查询覆盖语义化变量 */
 @media (prefers-color-scheme: dark) {
   :root {
     --color-background: var(--vt-c-black);
@@ -50,6 +68,10 @@
   }
 }
 
+/* -----------------------------------------------
+ * 全局盒子模型重置
+ * 统一 box-sizing，清除默认 margin 和 font-weight
+ * ----------------------------------------------- */
 *,
 *::before,
 *::after {
@@ -58,14 +80,20 @@
   font-weight: normal;
 }
 
+/* -----------------------------------------------
+ * body 基础样式
+ * 设置最小视口高度、文字颜色、背景色、字体栈、行高等
+ * ----------------------------------------------- */
 body {
   min-height: 100vh;
   color: var(--color-text);
   background: var(--color-background);
+  /* 主题切换时颜色过渡动效 */
   transition:
     color 0.5s,
     background-color 0.5s;
   line-height: 1.6;
+  /* 优先使用 Inter 字体，回退到系统默认无衬线字体栈 */
   font-family:
     Inter,
     -apple-system,
@@ -80,7 +108,7 @@ body {
     'Helvetica Neue',
     sans-serif;
   font-size: 15px;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;          /* 优化文字渲染 */
+  -webkit-font-smoothing: antialiased;          /* WebKit 字体平滑 */
+  -moz-osx-font-smoothing: grayscale;           /* Firefox macOS 字体平滑 */
 }

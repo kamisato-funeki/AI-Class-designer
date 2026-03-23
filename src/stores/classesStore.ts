@@ -27,26 +27,43 @@ import dayjs from 'dayjs'
 
 const now = () => dayjs().format('YYYY-MM-DD HH:mm:ss')
 
+/**
+ * 班级管理全局状态中心 (useClassesStore)
+ * 业务职责：
+ * 1. 班级全生命周期管理：维护教师名下的所有班级列表及其基本画像。
+ * 2. 联动数据聚合：负责异步加载与当前选中班级强相关的任务、学生明细、课表排期及即时通讯（IM）记录。
+ * 3. 弹性 Mock 机制：在离线或 API 异常时，通过内置逻辑生成高仿真的教学业务数据，保障前端 UI 的平滑运行。
+ * 4. 实时交互中转：驱动班级群聊与学生私聊的信令收发。
+ */
 export const useClassesStore = defineStore('classes', () => {
-  const classes = ref<ClassInfo[]>([])
-  const currentClass = ref<ClassInfo | null>(null)
+  // --- 响应式状态 (State) ---
+  const classes = ref<ClassInfo[]>([])              // 教师管辖的全量班级集合
+  const currentClass = ref<ClassInfo | null>(null)   // 当前正在视口中交互的班级上下文对象
 
-  const classTasks = ref<Record<string, ClassTask[]>>({})
-  const classStudents = ref<Record<string, StudentInfo[]>>({})
-  const classSchedules = ref<Record<string, CourseScheduleItem[]>>({})
-  const classStudentMessages = ref<Record<string, StudentMessage[]>>({})
+  const classTasks = ref<Record<string, ClassTask[]>>({})            // 任务缓存映射表：按 ClassId 归档作业、讨论等
+  const classStudents = ref<Record<string, StudentInfo[]>>({})       // 学员名册映射表：存储每个班级的学生画像
+  const classSchedules = ref<Record<string, CourseScheduleItem[]>>({}) // 课表排行映射表：存储班级的课程时间线
+  const classStudentMessages = ref<Record<string, StudentMessage[]>>({}) // 私聊历史映射表：维护教师与学生间的 1对1 记录
 
-  const classGroupChats = ref<Record<string, GroupChat[]>>({})
-  const chatMessages = ref<Record<string, GroupMessage[]>>({})
-  const activeGroupChat = ref<GroupChat | null>(null)
+  const classGroupChats = ref<Record<string, GroupChat[]>>({})       // 班级群组映射表：存储班级内的多个讨论群
+  const chatMessages = ref<Record<string, GroupMessage[]>>({})       // 消息流映射表：按 GroupId 聚合存储所有 IM 消息块
+  const activeGroupChat = ref<GroupChat | null>(null)                // 当前桌面/视口中激活的聊天会话对象
 
+  // --- 衍生计算状态 (Computed) ---
+  // 根据 currentClass 的变化，自动切片并暴露给 UI 层直接使用的子集数据
   const currentTasks = computed(() => currentClass.value ? classTasks.value[currentClass.value.id] || [] : [])
   const students = computed(() => currentClass.value ? classStudents.value[currentClass.value.id] || [] : [])
   const currentSchedule = computed(() => currentClass.value ? classSchedules.value[currentClass.value.id] || [] : [])
   const groupChats = computed(() => currentClass.value ? classGroupChats.value[currentClass.value.id] || [] : [])
   const currentGroupMessages = computed(() => activeGroupChat.value ? chatMessages.value[activeGroupChat.value.id] || [] : [])
-  const currentStudentMessages = computed(() => []) // Kept for backwards compatibility
+  // 预留占位，用于兼容旧版私聊逻辑
+  const currentStudentMessages = computed(() => []) 
 
+  /**
+   * 【异步指令】loadClasses
+   * 作用：初始化班级数据源
+   * 业务逻辑：尝试从后端拉取班级列表，若失败或为空，则注入一套完整的 Mock 数据并默认选中首个项。
+   */
   const loadClasses = async () => {
     try {
       const res = await apiGetClasses()
@@ -61,7 +78,7 @@ export const useClassesStore = defineStore('classes', () => {
             classNumber: '1班',
             studentCount: 45,
             createTime: now(),
-            description: '活泼好动的理科强班',
+            description: '专注于理科思维培养，包含物理、化学探究小组。',
           },
           {
             id: 'c2',
@@ -70,22 +87,33 @@ export const useClassesStore = defineStore('classes', () => {
             classNumber: '2班',
             studentCount: 42,
             createTime: now(),
-            description: '英语特色班',
+            description: '浸润式英语环境设计，支持口语 AI 测评。',
           },
         ]
       }
     }
+    // 策略：初始空状态下自动激活第一顺位班级
     if (classes.value.length > 0 && !currentClass.value) {
       currentClass.value = classes.value[0] || null
     }
   }
 
+  /**
+   * 【异步指令】selectClass
+   * 作用：切换业务上下文 ID
+   * @param classId 目标班级 ID
+   * 业务逻辑：
+   * 1. 切换 currentClass 指针。
+   * 2. 并行/串行加载任务、学生（带生成算法）、课表及 IM 列表，实现视图的级联刷新。
+   */
   const selectClass = async (classId: string) => {
     const found = classes.value.find((c) => c.id === classId)
     if (found) {
       currentClass.value = found
+      // A. 同步加载班级任务
       await loadTasks(classId)
 
+      // B. 加载动态生成的小组学生名单 (Mock 算法：生成 45 名具有随机成绩分布的虚拟学生)
       try {
         const res = await apiGetClassStudents(classId)
         classStudents.value[classId] = res.data.data
@@ -116,6 +144,7 @@ export const useClassesStore = defineStore('classes', () => {
         classStudents.value[classId] = list
       }
 
+      // C. 加载课程排期
       try {
         const res = await apiGetClassSchedule(classId)
         classSchedules.value[classId] = res.data.data
@@ -127,28 +156,39 @@ export const useClassesStore = defineStore('classes', () => {
         ]
       }
 
+      // D. 加载 IM IM 会话列表
       await loadGroupChats(classId)
     }
   }
 
+  /**
+   * 【异步指令】loadTasks
+   * 作用：拉取班级内的作业与互动任务
+   */
   const loadTasks = async (classId: string) => {
     try {
       const res = await apiGetClassTasks(classId)
       classTasks.value[classId] = res.data.data
     } catch {
       classTasks.value[classId] = [
-        { id: 't1', classId, title: '第一单元练习', type: 'homework', description: '完成课后第1-3题', createTime: now() },
-        { id: 't2', classId, title: '课前提问', type: 'discussion', description: '思考关于重力的问题', createTime: now() },
+        { id: 't1', classId, title: '第一单元练习', type: 'homework', description: '完成课后第1-3题并拍照上传。', createTime: now() },
+        { id: 't2', classId, title: '课前提问', type: 'discussion', description: '思考一下重力如果不复存在，世界会变成什么样？', createTime: now() },
       ]
     }
   }
 
+  /**
+   * 【异步指令】createClass
+   * 作用：执行新班级的入库持久化
+   * @param data 班级表单信息 (Partial)
+   */
   const createClass = async (data: Partial<ClassInfo>) => {
     try {
       const res = await apiCreateClass(data)
       classes.value.push(res.data.data)
       return res.data.data
     } catch {
+      // 降级：执行本地事务存储，赋予唯一 UUID
       const newClass: ClassInfo = {
         id: uuidv4(),
         name: data.name || '新班级',
@@ -163,6 +203,11 @@ export const useClassesStore = defineStore('classes', () => {
     }
   }
 
+  /**
+   * 【异步指令】createTask
+   * 作用：发布新的教学任务
+   * @param data 任务载体信息
+   */
   const createTask = async (data: Partial<ClassTask>) => {
     const classId = data.classId || 'c1'
     try {
@@ -171,6 +216,7 @@ export const useClassesStore = defineStore('classes', () => {
       classTasks.value[classId].push(res.data.data)
       return res.data.data
     } catch {
+      // 降级：本地 Mock 发布
       const task: ClassTask = {
         id: uuidv4(),
         classId,
@@ -186,7 +232,12 @@ export const useClassesStore = defineStore('classes', () => {
     }
   }
 
+  /**
+   * 【异步指令】loadGroupChats
+   * 作用：拉取当前班级的所有群聊组
+   */
   const loadGroupChats = async (classId: string) => {
+    // 策略：缓存优先，避免重复拉取
     if (classGroupChats.value[classId] && classGroupChats.value[classId].length > 0) return;
     try {
       const res = await apiGetGroupChats()
@@ -199,14 +250,21 @@ export const useClassesStore = defineStore('classes', () => {
     }
   }
 
+  /**
+   * 【异步指令】selectGroupChat
+   * 作用：激活特定的会话窗口并加载历史流
+   * @param chat 目标群聊元数据
+   */
   const selectGroupChat = async (chat: GroupChat) => {
-    chat.unreadCount = 0;
+    chat.unreadCount = 0; // 交互策略：点击即视为已读
     activeGroupChat.value = chat
-    if (chatMessages.value[chat.id]) return;
+    if (chatMessages.value[chat.id]) return; 
+    
     try {
       const res = await apiGetGroupMessages(chat.id)
       chatMessages.value[chat.id] = res.data.data
     } catch {
+      // 提供初始群聊公告/欢迎语作为 Mock 记录
       chatMessages.value[chat.id] = [
         {
           id: 'm1',
@@ -216,7 +274,7 @@ export const useClassesStore = defineStore('classes', () => {
           senderAvatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=t1',
           senderRole: '老师',
           senderLevel: 20,
-          content: '大家好，这是群聊。',
+          content: '大家好，欢迎进入此讨论空间，我是张老师。',
           createTime: now(),
           direction: 'receive',
         }
@@ -224,6 +282,14 @@ export const useClassesStore = defineStore('classes', () => {
     }
   }
 
+  /**
+   * 【异步指令】sendGroupMessage
+   * 作用：向 IM 服务发送新消息
+   * @param groupId 目标群 ID
+   * @param content 散装内容主体
+   * @param type 消息类型支持
+   * @param fileData 携带的文件或流对象
+   */
   const sendGroupMessage = async (
     groupId: string,
     content: string,
@@ -236,13 +302,14 @@ export const useClassesStore = defineStore('classes', () => {
       chatMessages.value[groupId].push(res.data.data)
       return res.data.data
     } catch {
+      // 离线发送模拟：本地直接落库
       const newMsg: GroupMessage = {
         id: uuidv4(),
         groupId,
         senderId: 'u4',
         senderName: '我',
         senderAvatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=u4',
-        senderRole: '管理员',
+        senderRole: '教研员',
         senderLevel: 7,
         content,
         createTime: now(),
@@ -255,18 +322,26 @@ export const useClassesStore = defineStore('classes', () => {
     }
   }
 
+  /**
+   * 【异步指令】loadStudentMessages
+   * 作用：加载与特定学生之间的 1对1 历史记录
+   */
   const loadStudentMessages = async (studentId: string) => {
     try {
       const res = await apiGetStudentMessages(studentId)
       classStudentMessages.value[studentId] = res.data.data
     } catch {
       classStudentMessages.value[studentId] = [
-        { id: 'msg1', studentId, senderId: studentId, content: '老师好', isRead: true, direction: 'receive', createTime: now() },
-        { id: 'msg2', studentId, senderId: 'teacher', content: '你好', isRead: true, direction: 'send', createTime: now() }
+        { id: 'msg1', studentId, senderId: studentId, content: '老师好，我想咨询一下这次作业的难点。', isRead: true, direction: 'receive', createTime: now() },
+        { id: 'msg2', studentId, senderId: 'teacher', content: '好的，稍后我会在课堂上进行专题讲解。', isRead: true, direction: 'send', createTime: now() }
       ]
     }
   }
 
+  /**
+   * 【异步指令】sendStudentMessage
+   * 作用：执私聊回复逻辑
+   */
   const sendStudentMessage = async (studentId: string, content: string) => {
     try {
       const res = await apiSendStudentMessage(studentId, content)
@@ -281,6 +356,16 @@ export const useClassesStore = defineStore('classes', () => {
     }
   }
 
+  /**
+   * 【高阶指令】findOrCreateStudentChat
+   * 作用：面向 UI 的便捷接口，点击学生列表直接发起/唤回对话
+   * @param classId 班级上下文
+   * @param student 目标学生画像
+   * 业务逻辑：
+   * 1. 根据学生姓名在当前班级会话池中进行检索。
+   * 2. 若命中，则激活该会话。
+   * 3. 若未命中，则静默插入一个私信类型的 Mock 会话并激活。
+   */
   const findOrCreateStudentChat = async (classId: string, student: StudentInfo) => {
     if (!classGroupChats.value[classId]) {
       classGroupChats.value[classId] = []
@@ -290,11 +375,12 @@ export const useClassesStore = defineStore('classes', () => {
       await selectGroupChat(existing)
       return existing.id
     }
+    // 注入私信会话载体
     const newChat: GroupChat = {
       id: `chat_${student.id}`,
       name: student.name,
       avatar: student.avatar,
-      lastMessage: '',
+      lastMessage: '点击开始与学生进行 1对1 沟通',
       lastSender: '',
       lastMessageTime: now().split(' ')[1],
       unreadCount: 0,

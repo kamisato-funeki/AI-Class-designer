@@ -1,6 +1,14 @@
+<!--
+  班级群聊看板组件 (ClassChatBoard)
+  业务逻辑：
+  1. 展示指定班级群聊的实时消息流。
+  2. 支持多种消息类型渲染：文本、图片、文件（Word/PPT/PDF等）。
+  3. 提供丰富的输入交互：文字输入、表情、点击上传文件/图片、拖拽上传。
+  4. 消息滚动管理：新消息到达或切换群聊时自动滚动到底部。
+-->
 <template>
   <div class="class-chat-board">
-    <!-- Header -->
+    <!-- 顶部标题栏：包含返回按钮、群名和成员数 -->
     <div class="chat-header">
       <div class="chat-title">
         <a-button type="text" @click="$emit('back')" class="back-btn">&lt; 返回</a-button>
@@ -9,27 +17,32 @@
       </div>
     </div>
 
-    <!-- Messages List -->
+    <!-- 消息列表滚动区域 -->
     <div class="chat-messages" ref="chatScrollRef">
       <div v-for="msg in classesStore.currentGroupMessages" :key="msg.id" class="message-wrapper">
+        <!-- 时间分割线 -->
         <div class="time-divider" v-if="msg.id === 'm1' || msg.id === 'm5' || msg.id === 'm7' || true">
           <span>{{ msg.createTime }}</span>
         </div>
 
+        <!-- 消息行：根据发送方/接收方决定渲染方向 -->
         <div class="message-row" :class="msg.direction">
+          <!-- 接收方头像 -->
           <div class="avatar-col" v-if="msg.direction === 'receive'">
             <a-avatar :src="msg.senderAvatar" />
           </div>
 
           <div class="message-content">
+            <!-- 接收方用户信息 -->
             <div class="message-info" v-if="msg.direction === 'receive'">
               <span class="user-level" v-if="msg.senderLevel">LV{{ msg.senderLevel }}</span>
               <span class="user-role" v-if="msg.senderRole">{{ msg.senderRole }}</span>
               <span class="user-name">{{ msg.senderName }}</span>
             </div>
 
+            <!-- 消息气泡内容区 -->
             <div class="bubble-wrapper">
-              <!-- Render File -->
+              <!-- 文件类型消息渲染 -->
               <div v-if="(msg as any).msgType === 'file' || msg.content.endsWith('.rar')"
                 class="chat-bubble file-bubble">
                 <FileWordOutlined v-if="msg.content.includes('.doc')" class="file-icon word-icon" />
@@ -39,18 +52,19 @@
                 <span class="file-name">{{ msg.content }}</span>
               </div>
 
-              <!-- Render Image -->
+              <!-- 图片类型消息渲染 -->
               <div v-else-if="(msg as any).msgType === 'image'" class="chat-bubble image-bubble">
                 <img :src="(msg as any).fileData" class="chat-image" />
               </div>
 
-              <!-- Render Text -->
+              <!-- 普通文本内容渲染 -->
               <div v-else class="chat-bubble">
                 {{ msg.content }}
               </div>
             </div>
           </div>
 
+          <!-- 发送方头像 -->
           <div class="avatar-col" v-if="msg.direction === 'send'">
             <a-avatar :src="msg.senderAvatar" />
           </div>
@@ -125,26 +139,42 @@ import {
   FileWordOutlined, FilePptOutlined, FilePdfOutlined, FileOutlined, CloseOutlined
 } from '@ant-design/icons-vue';
 
-const classesStore = useClassesStore();
-defineEmits(['back']);
+/**
+ * 核心状态与事件定义
+ */
+const classesStore = useClassesStore(); // 班级业务仓库，管理当前选中的班级及群聊消息
+defineEmits(['back']); // 向父组件发送“返回”事件
 
-const inputValue = ref('');
-const chatScrollRef = ref<HTMLElement | null>(null);
+/**
+ * 【响应式变量】基本交互
+ */
+const inputValue = ref('');            // 聊天输入框的双向绑定文本内容
+const chatScrollRef = ref<HTMLElement | null>(null); // 指向消息滚动容器的 DOM 引用，用于滚动控制
 
-// Drag & Drop State
-const isDragging = ref(false);
-const dragCounter = ref(0);
-const fileInput = ref<HTMLInputElement | null>(null);
-const imageInput = ref<HTMLInputElement | null>(null);
+/**
+ * 【响应式变量】拖拽与文件上传状态
+ */
+const isDragging = ref(false);         // 当前是否有文件正悬停在聊天区域上方（控制拖拽蒙版）
+const dragCounter = ref(0);            // 拖拽计数器，用于解决子元素触发 dragleave 导致的闪烁问题
+const fileInput = ref<HTMLInputElement | null>(null);  // 隐藏的通用文件上传 input 引用
+const imageInput = ref<HTMLInputElement | null>(null); // 隐藏的图片专用上传 input 引用
 
+/**
+ * 【接口定义】待发送文件单元
+ */
 interface PendingFile {
   file: File;
   fileType: 'image' | 'file';
   extension?: string;
-  previewUrl?: string; // used for images
+  previewUrl?: string; // 图片文件的本地 Blob 预览地址
 }
-const pendingFiles = ref<PendingFile[]>([]);
+const pendingFiles = ref<PendingFile[]>([]); // 暂存在输入框上方的待发送文件队列
 
+/**
+ * 【函数】scrollToTop
+ * 作用：将聊天消息列表平滑滚动至最底部
+ * 业务逻辑：利用 nextTick 确保在 DOM 更新（如新消息插入）后执行滚动计算
+ */
 const scrollToBottom = () => {
   nextTick(() => {
     if (chatScrollRef.value) {
@@ -153,15 +183,27 @@ const scrollToBottom = () => {
   });
 };
 
+/**
+ * 【侦听器】消息列表长度
+ * 作用：当 `currentGroupMessages` 数组长度发生变化（收到或发出新消息）时，立刻执行自动滚底
+ */
 watch(() => classesStore.currentGroupMessages.length, () => {
   scrollToBottom();
 });
 
+/**
+ * 【生命周期钩子】onMounted
+ * 作用：组件初始化时，确保首屏加载的消息展示在底部
+ */
 onMounted(() => {
   scrollToBottom();
 });
 
-// File Handling Methods
+/**
+ * 【函数】triggerFileUpload
+ * 作用：根据按钮类型，通过 JS 手动触发隐藏的 input 文件的点击事件
+ * @param isImage 是否为图片上传模式
+ */
 const triggerFileUpload = (isImage: boolean) => {
   if (isImage && imageInput.value) {
     imageInput.value.click();
@@ -170,6 +212,11 @@ const triggerFileUpload = (isImage: boolean) => {
   }
 };
 
+/**
+ * 【函数】processFiles
+ * 作用：集中处理获取到的 File 对象（无论是拖拽还是手动选择）
+ * 业务逻辑：判断文件类型，若为图片则生成本地预览 Blob 地址，并推入待发送队列 `pendingFiles`
+ */
 const processFiles = (files: FileList | File[]) => {
   Array.from(files).forEach(file => {
     const isImage = file.type.startsWith('image/');
@@ -177,6 +224,7 @@ const processFiles = (files: FileList | File[]) => {
 
     let previewUrl = '';
     if (isImage) {
+      // 生成用于界面预览的临时 URL
       previewUrl = URL.createObjectURL(file);
     }
 
@@ -189,26 +237,32 @@ const processFiles = (files: FileList | File[]) => {
   });
 };
 
+/**
+ * 【回调函数】handleFileSelected
+ * 作用：手动选择文件 input 发生 change 事件后的响应逻辑
+ */
 const handleFileSelected = (e: Event) => {
   const target = e.target as HTMLInputElement;
   if (target.files && target.files.length > 0) {
     processFiles(target.files);
   }
-  target.value = ''; // reset
+  target.value = ''; // 清空 value 以允许连续选择同一个文件
 };
 
+/**
+ * 【拖拽事件处理器组】
+ * 作用：控制 `isDragging` 状态，实现美观的文件拖入覆盖层效果
+ */
 const handleDragEnter = () => {
   dragCounter.value++;
   isDragging.value = true;
 };
-
 const handleDragLeave = () => {
   dragCounter.value--;
   if (dragCounter.value === 0) {
     isDragging.value = false;
   }
 };
-
 const handleDrop = (e: DragEvent) => {
   dragCounter.value = 0;
   isDragging.value = false;
@@ -217,34 +271,47 @@ const handleDrop = (e: DragEvent) => {
   }
 };
 
+/**
+ * 【函数】removePendingFile
+ * 作用：点击待发送文件右侧的 X，将其从队列移除
+ * 业务逻辑：若为图片，需调用 revokeObjectURL 释放内存，防止内存泄漏
+ */
 const removePendingFile = (idx: number) => {
   const pf = pendingFiles.value[idx];
   if (pf?.previewUrl) URL.revokeObjectURL(pf.previewUrl);
   pendingFiles.value.splice(idx, 1);
 };
 
+/**
+ * 【异步函数】handleSend
+ * 作用：执行最终的消息发送逻辑
+ * 业务逻辑：
+ * 1. 优先遍历并发送已选中的附件文件（图片或文档）。
+ * 2. 清空文件队列。
+ * 3. 接着发送文本区输入的文字内容。
+ * 4. 调用 store 的 `sendGroupMessage` 实现数据的持久化与同步。
+ */
 const handleSend = async () => {
   if (!classesStore.activeGroupChat) return;
 
-  // Send attached files first
+  // 1. 发送待处理的附件队列
   if (pendingFiles.value.length > 0) {
     for (const pf of pendingFiles.value) {
-      // Pass the file's name as content, type as specific, fileData as the base64 or object URL for mock
       const sendType = pf.fileType;
       await classesStore.sendGroupMessage(
         classesStore.activeGroupChat.id,
         pf.file.name,
         sendType,
-        pf.previewUrl // Use preview URL as mock mock representation for local img render
+        pf.previewUrl // 携带预览 Data 用于展示
       );
     }
     pendingFiles.value = [];
   }
 
-  // Send Text
+  // 2. 发送普通文字内容
   if (inputValue.value.trim()) {
     const content = inputValue.value;
-    inputValue.value = '';
+    inputValue.value = ''; // 发送前清空输入框，提升体验
     await classesStore.sendGroupMessage(classesStore.activeGroupChat.id, content, 'text');
   }
 };

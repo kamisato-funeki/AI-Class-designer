@@ -1,3 +1,10 @@
+<!--
+  课程设计中心页面 (DesignCenterView)
+  业务逻辑：
+  1. 作为设计素材和模板的集成中心。
+  2. 包含两个主要页签：设计草稿（未完成的作品）和我的模板（可复用的资源）。
+  3. 支持查看设计进度，并提供继续编辑或使用模版发起新设计的入口。
+-->
 <template>
   <div class="design-center-container">
     <div class="page-header">
@@ -5,8 +12,10 @@
     </div>
 
     <a-tabs v-model:activeKey="activeTab" class="bg-white-tabs">
+      <!-- 页签一：设计草稿 -->
       <a-tab-pane key="drafts" tab="我的课程设计（草稿）">
         <div class="grid-view">
+          <!-- 模拟渲染草稿卡片 -->
           <a-card hoverable class="design-card" v-for="i in 2" :key="i">
             <template #cover>
               <div class="cover-draft">设计草稿缩略图</div>
@@ -24,6 +33,7 @@
         </div>
       </a-tab-pane>
 
+      <!-- 页签二：模板库 -->
       <a-tab-pane key="templates" tab="我的模板">
         <div class="templates-filter">
           <a-space>
@@ -34,6 +44,7 @@
         </div>
 
         <div class="grid-view mt-4">
+          <!-- 模拟渲染模板卡片 -->
           <a-card hoverable class="template-card" v-for="i in 3" :key="i">
             <template #cover>
               <div class="cover-template">模板大图预览</div>
@@ -42,6 +53,7 @@
             <div class="mt-2">
               <a-tag color="blue">PPT模板</a-tag>
             </div>
+            <!-- 悬浮操作层 -->
             <div class="hover-overlay">
               <a-button type="primary">使用此模板</a-button>
               <a-button style="margin-top: 8px">预览</a-button>
@@ -56,6 +68,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
+/**
+ * 【响应式变量】当前选中的页签标识 (Tab Key)
+ * 作用：控制页面内容在“我的课程设计（草稿）”和“我的模板”两大模块间进行切换
+ * 业务逻辑：
+ * - 'drafts': 展示用户正在设计中、未正式定稿的作品列表。
+ * - 'templates': 展示教师沉淀的或系统预设的可复用课件/教案模板。
+ */
 const activeTab = ref('drafts');
 </script>
 

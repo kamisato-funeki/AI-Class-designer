@@ -1,14 +1,23 @@
+<!--
+  工作台主页 (WorkspaceView)
+  业务逻辑：
+  1. 作为用户登录后的首屏，展示核心入口和全局动态。
+  2. 视觉特效：包含基于鼠标点击和自动漂浮的动态几何背景。
+  3. 沉浸式交互：Hero 区域包含 AI 指令输入框，随滚动产生毛玻璃蒙版渐变效果。
+  4. 数据展示：聚合展示常用模板、最近编辑的课件以及班级动态。
+  5. 响应式布局：在宽屏下采用双栏分部，移动端自动堆叠。
+-->
 <template>
   <div class="workspace-wrapper">
-    <!-- 动态背景 -->
+    <!-- 动态几何背景（装饰用） -->
     <div class="dynamic-bg">
       <div v-for="shape in staticShapes" :key="'s'+shape.id" :class="['bg-shape', 'static-shape', shape.type]" :style="shape.style"></div>
       <div v-for="shape in clickShapes" :key="'c'+shape.id" :class="['bg-shape', 'click-anim', shape.type]" :style="shape.style"></div>
     </div>
 
-    <!-- 主滚动区域 -->
+    <!-- 主滚动容器 -->
     <div class="workspace-scroll-container" @click="handleBgClick" @scroll="handleScroll" ref="scrollContainer">
-      <!-- Top Section (100vh - Header) -> Centered greeting, bottom input -->
+      <!-- 英雄区 (Hero Section)：包含欢迎语与核心输入框 -->
       <div class="hero-section">
         <div class="hero-content">
           <GreetingSection />
@@ -16,16 +25,16 @@
         <div class="hero-bottom-input">
           <InputCore />
         </div>
-        <!-- 滚动滑出的毛玻璃蒙版 -->
+        <!-- 滚动滑出的毛玻璃蒙版：随滚动透明度变化，产生沉浸式过渡 -->
         <div class="scroll-mask" :style="{ opacity: maskOpacity }"></div>
       </div>
 
-      <!-- Content Layout -->
+      <!-- 仪表盘内容区域 -->
       <div class="dashboard-content">
         <div class="dashboard-grid">
-          <!-- Left Column: Courseware Stats, etc. (Can extract if needed, but keeping simple) -->
+          <!-- 左侧：课件列表与统计 -->
           <div class="left-col">
-            <!-- 常用模板 -->
+            <!-- 常用模板板块 -->
             <div class="section-card">
               <div class="section-header">
                 <h3>常用模板</h3>
@@ -47,7 +56,7 @@
               </div>
             </div>
 
-            <!-- 最近课件 -->
+            <!-- 最近编辑的课件 -->
             <div class="section-card">
               <div class="section-header">
                 <h3>最近课件</h3>
@@ -70,13 +79,13 @@
             </div>
           </div>
 
-          <!-- Right Column: Class Dynamics -->
+          <!-- 右侧：班级动态卡片 -->
           <div class="right-col">
             <ClassDynamicsCard />
           </div>
         </div>
 
-        <!-- 底部教育新闻 -->
+        <!-- 底部：教育新闻资讯 -->
         <EducationNewsSection />
       </div>
     </div>
@@ -101,55 +110,82 @@ import InputCore from './workSpaceComp/InputCore.vue';
 import ClassDynamicsCard from './workSpaceComp/ClassDynamicsCard.vue';
 import EducationNewsSection from './workSpaceComp/EducationNewsSection.vue';
 
-const workspaceStore = useWorkspaceStore();
-const coursewareStore = useCoursewareStore();
+/**
+ * 状态仓库初始化
+ */
+const workspaceStore = useWorkspaceStore(); // 工作台状态仓库：管理全局数据汇总与统计指标
+const coursewareStore = useCoursewareStore(); // 课件状态仓库：管理最近编辑课件及常用模板数据
 
-const scrollContainer = ref<HTMLElement | null>(null);
-const maskOpacity = ref(1); // 1 = 完全模糊遮挡
-const showBackTop = ref(false);
+/**
+ * 【响应式变量】UI 控制与滚动状态
+ */
+const scrollContainer = ref<HTMLElement | null>(null); // 主滚动容器 DOM 引用，用于监听 scroll 事件
+const maskOpacity = ref(1);                            // 英雄区磨砂蒙版的透明度，随滚动产生渐变效果
+const showBackTop = ref(false);                        // 控制“回到顶部”悬浮按钮的显示与隐藏
 
+/**
+ * 【函数】handleScroll
+ * 作用：核心 UI 交互响应函数 - 同步滚动进度与视觉效果
+ * 业务逻辑：
+ * 1. 随着页面向下滚动，根据滚动距离 (0-300px) 计算 `maskOpacity`，实现欢迎区蒙版的淡出。
+ * 2. 实时监测滚动距离，超过 80% 视口高度时自动显示“回到顶部”按钮。
+ */
 const handleScroll = () => {
   if (!scrollContainer.value) return;
   const scrollTop = scrollContainer.value.scrollTop;
 
-  // Mask opacity calc (0 at top, 1 at 300px scroll)
-  // Wait, the requirement says "中部以下的部分逐渐半透明，用户向上滑动时逐渐使不透明度恢复100%"
-  // That means: when at top (scrollTop=0), opacity is 1. When scrolled down, opacity approaches 0.
+  // 1. 设置 Hero 区域蒙版淡出系数
   let newOpacity = 1 - scrollTop / 300;
   if (newOpacity < 0) newOpacity = 0;
   if (newOpacity > 1) newOpacity = 1;
   maskOpacity.value = newOpacity;
 
-  // Show back to top if input is out of view (around 80vh scrolled)
+  // 2. 切换回到顶部按钮状态
   const threshold = window.innerHeight * 0.8;
   showBackTop.value = scrollTop > threshold;
 };
 
+/**
+ * 【函数】scrollToTop
+ * 作用：平滑回滚至页面最顶端
+ */
 const scrollToTop = () => {
   if (scrollContainer.value) {
     scrollContainer.value.scrollTo({ top: 0, behavior: 'smooth' });
   }
 };
 
-// 动态背景逻辑
+/**
+ * 【动态背景特效】图形接口与状态集
+ */
 interface BgShape {
   id: number;
   type: string;
   style: Record<string, string | number>;
 }
 
-const staticShapes = ref<BgShape[]>([]);
-const clickShapes = ref<BgShape[]>([]);
-let shapeIdCounter = 0;
-const shapeTypes = ['square', 'circle', 'triangle', 'diamond', 'cross'];
+const staticShapes = ref<BgShape[]>([]); // 初始加载时生成的背景自动漂浮图形
+const clickShapes = ref<BgShape[]>([]);  // 用户点击背景时产生的瞬时交互图形
+let shapeIdCounter = 0;                  // 全局唯一图形 ID 计数器
+const shapeTypes = ['square', 'circle', 'triangle', 'diamond', 'cross']; // 支持的随机图形库
 
+/**
+ * 【函数】handleBgClick
+ * 作用：背景“点击爆炸”动效实现
+ * @param e 鼠标点击事件，用于提取相对于视口的 (x, y) 坐标
+ * 业务逻辑：
+ * 1. 过滤：若点击在卡片、按钮等交互区域则不触发背景特效。
+ * 2. 生成：在点击位置实例化一个随机形状，并注入 CSS 变量以控制扩散方向。
+ * 3. 销毁：1.5秒后（匹配动画时长）自动从 DOM 数组中剔除，释放内存。
+ */
 const handleBgClick = (e: MouseEvent) => {
   const target = e.target as HTMLElement;
+  // 排除点击在业务组件上的情况
   if (target.closest('.section-card, .input-core-container, .greeting-section, .news-section, .ant-btn, .file-preview-item')) return;
 
   const id = shapeIdCounter++;
   const shapeType = shapeTypes[Math.floor(Math.random() * shapeTypes.length)] as string;
-  const size = 30 + Math.random() * 40; // 30px to 70px
+  const size = 30 + Math.random() * 40; 
 
   const shape: BgShape = {
     id,
@@ -159,27 +195,33 @@ const handleBgClick = (e: MouseEvent) => {
       top: `${e.clientY - size/2}px`,
       width: `${size}px`,
       height: `${size}px`,
-      '--click-x': `${(Math.random() - 0.5) * 300}px`,
-      '--click-y': `${(Math.random() - 0.5) * 300 - 150}px`,
+      '--click-x': `${(Math.random() - 0.5) * 300}px`, // 随机 X 轴扩散位移
+      '--click-y': `${(Math.random() - 0.5) * 300 - 150}px`, // 随机 Y 轴扩散位移
     }
   };
 
-  // 限制同时存在的点击动画数量，避免性能消耗过多
+  // 动画队列管理
   if (clickShapes.value.length >= 10) {
-    clickShapes.value.shift(); // 移除最旧的
+    clickShapes.value.shift(); 
   }
   clickShapes.value.push(shape);
 
+  // 定时销毁，匹配 CSS 动画时长
   setTimeout(() => {
     clickShapes.value = clickShapes.value.filter(s => s.id !== id);
   }, 1500);
 };
 
+/**
+ * 【生命周期钩子】onMounted
+ * 作用：初始化工作台数据并生成背景装饰图形
+ */
 onMounted(() => {
+  // 1. 并行加载核心业务数据
   workspaceStore.loadStats();
   coursewareStore.loadCoursewares();
 
-  // 生成初始背景图形 (减少数量以优化性能)
+  // 2. 生成初始的装饰性几何图形（自动漂浮型）
   const initialCount = 16;
   for (let i = 0; i < initialCount; i++) {
     const size = 20 + Math.random() * 30;

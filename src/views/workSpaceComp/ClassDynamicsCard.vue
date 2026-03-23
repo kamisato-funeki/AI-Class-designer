@@ -1,3 +1,10 @@
+<!--
+  工作台 - 班级动态卡片组件 (ClassDynamicsCard)
+  业务逻辑：
+  1. 在仪表盘展示班级相关的最新汇总动态。
+  2. 支持悬浮气泡显示动态详情描述。
+  3. 提供快速链接跳转至完整的班级管理页面。
+-->
 <template>
   <div class="section-card">
     <div class="section-header">
@@ -34,8 +41,18 @@
 import { useRouter } from 'vue-router';
 import { UserOutlined } from '@ant-design/icons-vue';
 
-const router = useRouter();
+/**
+ * 路由实例，用于页面跳转
+ */
+const router = useRouter(); 
 
+/**
+ * 【模拟数据】班级动态列表
+ * 每一项包含：
+ * - title: 动态标题（展现核心动作）
+ * - time: 相对时间（如“10分钟前”）
+ * - description: 详细描述（展示在 Hover Poper 中）
+ */
 const dynamics = [
   { title: '初二三班 提交了 5 份作业', time: '10分钟前', description: '关于勾股定理的课后练习已经全部收齐' },
   { title: '李小明 同学提问了关于勾股定理的问题', time: '1小时前', description: '他在讨论区发起了一个新帖' },

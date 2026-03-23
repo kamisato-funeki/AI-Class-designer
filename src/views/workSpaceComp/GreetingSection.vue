@@ -1,3 +1,10 @@
+<!--
+  工作台 - 欢迎问候语组件 (GreetingSection)
+  业务逻辑：
+  1. 展示个性化的教师欢迎语，包含姓名识别。
+  2. 实现打字机动画效果，增加视觉灵动感。
+  3. 自动轮换：每隔一段时间更换问候语和艺术字体组合。
+-->
 <template>
   <div class="greeting-section">
     <h2 class="typewriter-text" :style="{ fontFamily: titleFont }">
@@ -13,9 +20,17 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useUserStore } from '../../stores/userStore';
 
+/**
+ * 用户状态仓库：获取当前登录教师的姓名
+ */
 const userStore = useUserStore();
 
-// 定义问候语集合
+/**
+ * 【配置项】展示文本集合
+ * 包含：
+ * - main: 主问候语（函数形式，动态插入姓名）
+ * - sub: 副标题/鼓励语
+ */
 const greetings = [
   { main: () => `早上好，${userStore.user?.name || '老师'}！`, sub: '开启下一堂课的精彩旅程' },
   { main: () => `新的一天，${userStore.user?.name || '老师'}！`, sub: '教书育人，您辛苦了' },
@@ -24,21 +39,29 @@ const greetings = [
   { main: () => `您好，${userStore.user?.name || '老师'}！`, sub: '用AI赋能每一堂课，激发学生潜能' }
 ];
 
-// 定义可用的字体
+/**
+ * 可选的艺术字体家族
+ */
 const availableFonts = ['XuanZongTi', 'QijiCombo', 'AiDianFengYaHei'];
 
-// 状态
-const currentMain = ref('');
-const currentSub = ref('');
-const displayedText = ref('');
-const typingDone = ref(false);
+/**
+ * 【响应式变量】状态管理
+ */
+const currentMain = ref('');      // 当前选中的主问候语全文
+const currentSub = ref('');       // 当前选中的副标题
+const displayedText = ref('');    // 正在打字机渲染的当前片段
+const typingDone = ref(false);     // 打字机是否结束（由透明度过渡控制 CSS 动画触发）
 
-const titleFont = ref('XuanZongTi');
-const subFont = ref('QijiCombo');
+const titleFont = ref('XuanZongTi'); // 随机分配的主标题字体
+const subFont = ref('QijiCombo');     // 随机分配的副标题字体
 
-let typingTimer: number | null = null;
-let rotationTimer: number | null = null;
+let typingTimer: number | null = null;   // 打字机轮询定时器
+let rotationTimer: number | null = null; // 自动巡回更新问候语的定时器
 
+/**
+ * 【辅助函数】pickRandom
+ * 作用：从数组中随机抽取元素，支持排除指定项（防止连续两次一样）
+ */
 const pickRandom = <T>(arr: T[], exclude?: T): T => {
   let item: T;
   do {
@@ -47,25 +70,29 @@ const pickRandom = <T>(arr: T[], exclude?: T): T => {
   return item;
 };
 
+/**
+ * 【核心函数】refreshGreeting
+ * 作用：核心业务逻辑 - 更新文案并重启打字机
+ * 业务逻辑：
+ * 1. 清理现有计时器并归零显示片段。
+ * 2. 随机选取新问候语与字体对。
+ * 3. 启动 `setInterval` 逐字截取 `currentMain` 赋值给 `displayedText`。
+ */
 const refreshGreeting = () => {
-  // 重置状态
   if (typingTimer) clearInterval(typingTimer);
   displayedText.value = '';
   typingDone.value = false;
 
-  // 随机挑选问候语（确保不要连续重复）
   const previousSub = currentSub.value;
   const newGreeting = pickRandom(greetings, greetings.find(g => g.sub === previousSub));
   currentMain.value = newGreeting.main();
   currentSub.value = newGreeting.sub;
 
-  // 随机挑选两种不同的字体
   const f1 = pickRandom(availableFonts);
-  const f2 = pickRandom(availableFonts, f1); // 保证两个字体不同
+  const f2 = pickRandom(availableFonts, f1);
   titleFont.value = f1;
   subFont.value = f2;
 
-  // 重新开始打字动画
   let i = 0;
   typingTimer = window.setInterval(() => {
     if (i < currentMain.value.length) {
@@ -78,9 +105,12 @@ const refreshGreeting = () => {
   }, 100);
 };
 
+/**
+ * 生命周期管理：启动与销毁定时器
+ */
 onMounted(() => {
   refreshGreeting();
-  // 每5分钟刷新一次 (300000ms)
+  // 每30秒自动轮换一次
   rotationTimer = window.setInterval(() => {
     refreshGreeting();
   }, 30000);

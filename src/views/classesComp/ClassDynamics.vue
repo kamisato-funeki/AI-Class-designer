@@ -1,3 +1,9 @@
+<!--
+  班级动态时间轴组件 (ClassDynamics)
+  业务逻辑：
+  1. 以时间轴形式展示班级内发布的各项任务（作业、讨论、课件等）。
+  2. 根据任务类型自动匹配颜色和文案。
+-->
 <template>
   <a-timeline>
     <a-timeline-item v-for="task in classesStore.currentTasks" :key="task.id"
@@ -12,5 +18,8 @@
 <script setup lang="ts">
 import { useClassesStore } from '../../stores/classesStore';
 
-const classesStore = useClassesStore();
+/**
+ * 状态仓库
+ */
+const classesStore = useClassesStore(); // 班级仓库，从中响应式获取 currentTasks 任务列表
 </script>

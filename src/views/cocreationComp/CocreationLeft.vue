@@ -1,23 +1,34 @@
+<!--
+  课件共创页面 - 左侧对话区域 (CocreationLeft)
+  业务逻辑：
+  1. 提供与 AI (DeepSeek) 的交互界面，支持流式对话响应。
+  2. 增强型输入：支持文字、语音、附件上传（点击或拖拽）以及快捷回复。
+  3. 智能辅助：包含自动发送初始化话术、消息内容复制、对话重新生成等功能。
+  4. 交互优化：通过自定义滚动节点（Scroll Nodes）实现长对话的快速定位导航。
+-->
 <template>
   <div class="dialogue-area">
-    <!-- Top left course info -->
+    <!-- 顶部课程基本信息展示 -->
     <div class="course-header" v-if="currentCourse">
       <div class="course-title">{{ currentCourse.title }}</div>
       <div class="course-meta">{{ currentCourse.subject }} · {{ currentCourse.grade }}</div>
     </div>
 
     <div class="chat-area-wrapper" style="position: relative; flex: 1; display: flex; overflow: hidden;">
+      <!-- 聊天历史记录滚动区 -->
       <div class="chat-history" ref="chatHistoryRef">
         <template v-for="(msg, index) in cocreationStore.chatHistory" :key="msg.id">
           <div class="chat-message-row" :class="msg.role">
+            <!-- AI 头像 -->
             <a-avatar v-if="msg.role === 'assistant'" class="message-avatar ai-avatar"
               :src="'https://api.dicebear.com/7.x/bottts/svg?seed=deepseek'" />
             <div class="chat-bubble-container">
+              <!-- 消息气泡：支持 Markdown 渲染 -->
               <div class="chat-bubble" :class="msg.role">
                 <template v-if="msg.role === 'user'">{{ msg.content }}</template>
                 <div v-else class="markdown-body" v-html="renderMarkdown(msg.content)"></div>
               </div>
-              <!-- Suggested Replies -->
+              <!-- AI 建议回复按钮组 -->
               <div v-if="msg.role === 'assistant' && msg.suggestions && msg.suggestions.length > 0"
                 class="suggestions-container">
                 <a-button v-for="(suggestion, sIdx) in msg.suggestions" :key="sIdx" class="suggestion-btn" size="small"
@@ -46,14 +57,14 @@
         </template>
       </div>
 
-      <!-- Scrollbar Nodes Overlay -->
+      <!-- 滚动条定位节点：在滚动条位置渲染用户消息的锚点 -->
       <div class="scrollbar-nodes-overlay">
         <template v-for="(node, index) in scrollNodes" :key="index">
           <a-tooltip placement="left" :title="node.text">
             <div class="scroll-node" :style="{ top: `${node.topPct}%` }" @click="scrollToNode(node.top)"></div>
           </a-tooltip>
         </template>
-        <!-- Return to Bottom Node -->
+        <!-- 返回底部快捷节点 -->
         <a-tooltip placement="left" title="返回最新消息">
           <div class="scroll-node scroll-node-bottom" @click="scrollToBottom"></div>
         </a-tooltip>
@@ -139,28 +150,53 @@ import type { ChatMessage } from '../../types/types';
 import dayjs from 'dayjs';
 import { marked } from 'marked';
 
+/**
+ * 路由与状态仓库初始化
+ */
 const route = useRoute();
-const cocreationStore = useCocreationStore();
-const userStore = useUserStore();
-const coursewareStore = useCoursewareStore();
+const cocreationStore = useCocreationStore(); // 共创对话与多模态资产状态
+const userStore = useUserStore();             // 当前用户信息
+const coursewareStore = useCoursewareStore(); // 课件元数据管理
 
-const inputVal = ref('');
-const uploading = ref(false);
-const chatHistoryRef = ref<HTMLElement | null>(null);
+/**
+ * 【响应式变量】输入与 UI 状态
+ */
+const inputVal = ref('');                     // 底部对话框绑定的文本
+const uploading = ref(false);                   // 控制上传按钮的 Loading 状态
+const chatHistoryRef = ref<HTMLElement | null>(null); // 指向聊天消息滚动容器
 
+/**
+ * 【计算属性】currentCourse
+ * 作用：从路由 Query 参数中获取课件 ID，并从 store 中提取对应的课件简报信息（标题、学科、年级）
+ */
 const currentCourse = computed(() => {
   const id = route.query.id as string;
   if (!id) return null;
   return coursewareStore.coursewares.find(c => c.id === id) || null;
 });
 
+/**
+ * 【工具函数】renderMarkdown
+ * 作用：将 Markdown 格式的文本 safe 地解析并渲染成 HTML 字符串
+ */
 const renderMarkdown = (text: string) => {
   return marked.parse(text) || '';
 };
 
-// Scroll nodes calculation
+/**
+ * 【响应式变量】滚动节点（Scroll Nodes）
+ * 作用：存储用户消息在滚动条上的投影位置点
+ */
 const scrollNodes = ref<{ text: string, top: number, topPct: number }[]>([]);
 
+/**
+ * 【函数】calculateScrollNodes
+ * 作用：动态计算所有用户消息条目相对于滚动条的高度比例
+ * 业务逻辑：
+ * 1. 遍历所有带 `.user` 类的消息元素。
+ * 2. 计算其 `offsetTop` 与容器总高度的百分比。
+ * 3. 用于侧边滚动条上的锚点渲染，方便用户快速回溯自己的指令。
+ */
 const calculateScrollNodes = () => {
   if (!chatHistoryRef.value) return;
   const container = chatHistoryRef.value;
@@ -169,7 +205,6 @@ const calculateScrollNodes = () => {
 
   const msgElements = container.querySelectorAll('.chat-message-row.user');
   msgElements.forEach((el, index) => {
-    // find corresponding message text
     const userMsgs = cocreationStore.chatHistory.filter(m => m.role === 'user');
     const msg = userMsgs[index];
     if (msg) {
@@ -185,12 +220,21 @@ const calculateScrollNodes = () => {
   scrollNodes.value = nodes;
 };
 
+/**
+ * 【函数】scrollToNode
+ * 作用：点击滚动条锚点，将对话视图平滑定位到该消息位置
+ */
 const scrollToNode = (top: number) => {
   if (chatHistoryRef.value) {
     chatHistoryRef.value.scrollTo({ top: top - 24, behavior: 'smooth' });
   }
 };
 
+/**
+ * 【函数】checkAndSendInitialWelcome
+ * 作用：自动注入首条欢迎指令
+ * 业务逻辑：若对话历史为空且已明确课件背景，系统自动发送一段基于学科、年级、标题的初始化 Prompt。
+ */
 const checkAndSendInitialWelcome = () => {
   if (cocreationStore.chatHistory.length === 0 && currentCourse.value && cocreationStore.currentCoursewareId === currentCourse.value.id) {
     const promptMsg = `请作为老师，准备${currentCourse.value.subject}${currentCourse.value.grade}级的课程，主题是《${currentCourse.value.title}》。`;
@@ -201,10 +245,14 @@ const checkAndSendInitialWelcome = () => {
   }
 };
 
+/**
+ * 生命周期与侦听逻辑
+ */
 onMounted(() => {
   scrollToBottom();
 });
 
+// 监听当前协作的课件 ID 变化，执行初始化 Logic
 watch(
   () => [cocreationStore.currentCoursewareId, currentCourse.value?.id],
   ([storeId, courseId]) => {
@@ -218,6 +266,10 @@ watch(
   { immediate: true }
 );
 
+/**
+ * 【异步函数】scrollToBottom
+ * 作用：将对话列表强行拉至底端，并触发锚点重算
+ */
 const scrollToBottom = async () => {
   await nextTick();
   if (chatHistoryRef.value) {
@@ -226,6 +278,10 @@ const scrollToBottom = async () => {
   }
 };
 
+/**
+ * 【工具函数】handleCopy
+ * 作用：复制文本到系统剪贴板
+ */
 const handleCopy = (text: string) => {
   navigator.clipboard.writeText(text).then(() => {
     message.success('已复制到剪贴板');
@@ -234,6 +290,10 @@ const handleCopy = (text: string) => {
   });
 };
 
+/**
+ * 【函数】handleSuggestedReply
+ * 作用：点击 AI 给出的建议回复按钮
+ */
 const handleSuggestedReply = (text: string) => {
   const finalVal = text;
   cocreationStore.addMessage({
@@ -243,12 +303,18 @@ const handleSuggestedReply = (text: string) => {
   handleSendChat(finalVal);
 };
 
+/**
+ * 【函数】handleSend
+ * 作用：处理用户主输入框的“发送”动作
+ * 业务逻辑：混合正在录入的文本与已上传的文件上下文，并推入 store 对话流
+ */
 const handleSend = () => {
   if (!inputVal.value.trim() && uploadedFiles.value.length === 0) return;
   const val = inputVal.value;
   inputVal.value = '';
   let fileContext = '';
   if (uploadedFiles.value.length > 0) {
+    // 文本化文件列表，作为 Prompt 的一部分
     fileContext = `[附带文件：${uploadedFiles.value.map(f => f.name).join(', ')}]`;
     uploadedFiles.value = [];
   }
@@ -260,6 +326,16 @@ const handleSend = () => {
   handleSendChat(finalVal);
 };
 
+/**
+ * 【核心异步函数】handleSendChat
+ * 作用：调用 DeepSeek (streamChat) 实现流式交互
+ * 业务逻辑：
+ * 1. 创建空的 AI 消息占位符。
+ * 2. 传入当前课程的 Context 信息。
+ * 3. 在 `onToken` 中逐字累加显示内容，并强制滚底。
+ * 4. 结束后清理特定 XML 标签，并更新可能的课件标题。
+ * @param text 发送的 Prompt 文本
+ */
 const handleSendChat = async (text: string) => {
   const activeCourseId = currentCourse.value?.id;
   cocreationStore.isGenerating = true;
@@ -272,28 +348,29 @@ const handleSendChat = async (text: string) => {
   await streamChat(
     text,
     (token) => {
-      // Stream output
+      // 流式逐字响应
       assistantMsg.content += token;
       if (currentCourse.value?.id === activeCourseId) {
         scrollToBottom();
       }
     },
     (parsedCourseName) => {
+      // 对话完成回调
       if (activeCourseId && cocreationStore.coursesData[activeCourseId]) {
         cocreationStore.coursesData[activeCourseId].isGenerating = false;
       }
       
-      // Clean up the `<course_name>` xml tags from the chat history
+      // 清洗不可见标签
       const cleanContent = assistantMsg.content.replace(/<course_name>.*?<\/course_name>/g, '').trim();
       assistantMsg.content = cleanContent;
-      // Add pseudo-suggestions below AI reply
+      // 模拟生成的建议回复
       assistantMsg.suggestions = ['我觉得这个大纲不错', '能否再细化一下案例部分？'];
       
       if (currentCourse.value?.id === activeCourseId) {
         calculateScrollNodes();
       }
 
-      // Update course title if parsed
+      // 同步可能的标题更新
       if (parsedCourseName && activeCourseId) {
         coursewareStore.updateCourseware(activeCourseId, { title: parsedCourseName });
       }
@@ -314,12 +391,20 @@ const handleSendChat = async (text: string) => {
   );
 };
 
+/**
+ * 【函数】handleStopGeneration
+ * 作用：手动切断 AI 对话流链接
+ */
 const handleStopGeneration = () => {
   stopGeneration();
   cocreationStore.isGenerating = false;
   message.info('已停止生成');
 };
 
+/**
+ * 【函数】handleRegenerate
+ * 作用：重新发送最后一次用户指令
+ */
 const handleRegenerate = () => {
   const lastUserMsg = [...cocreationStore.chatHistory].reverse().find(m => m.role === 'user');
   if (lastUserMsg) {
@@ -327,9 +412,12 @@ const handleRegenerate = () => {
   }
 };
 
-// Voice to text integrated with WebSocket
+/**
+ * 【语音输入(VTT)相关】
+ */
 const isRecording = ref(false);
 let vttSession: VttSession | null = null;
+
 const handleVoiceInput = async () => {
   if (isRecording.value) {
     vttSession?.stop();
@@ -342,6 +430,7 @@ const handleVoiceInput = async () => {
     const originalInput = inputVal.value;
     vttSession = await startVoiceToText({
       onToken: (text) => {
+        // 实时追加识别到的词到输入框
         inputVal.value = (originalInput + ' ' + text).trim();
       },
       onComplete: () => {
@@ -359,14 +448,25 @@ const handleVoiceInput = async () => {
   }
 };
 
+/**
+ * 【拖拽上传与附件管理】
+ */
 const uploadedFiles = ref<{ id: string, name: string, type: string, raw: File, dataUrl?: string }[]>([]);
 const isDragging = ref(false);
 let dragCounter = 0;
 
 const handleDragEnter = () => { dragCounter++; isDragging.value = true; };
 const handleDragLeave = () => { dragCounter--; if (dragCounter === 0) isDragging.value = false; };
-const handleDrop = (e: DragEvent) => { dragCounter = 0; isDragging.value = false; handleFiles(Array.from(e.dataTransfer?.files || [])); };
+const handleDrop = (e: DragEvent) => { 
+  dragCounter = 0; 
+  isDragging.value = false; 
+  handleFiles(Array.from(e.dataTransfer?.files || [])); 
+};
 
+/**
+ * 【函数】handleUpload
+ * 作用：接管手动上传 input
+ */
 const handleUpload = (file: File) => {
   uploading.value = true;
   handleFiles([file]);
@@ -374,6 +474,10 @@ const handleUpload = (file: File) => {
   return false;
 };
 
+/**
+ * 【函数】handleFiles
+ * 作用：核心文件处理分发逻辑，支持图片本地预览与后缀校验
+ */
 const handleFiles = (files: File[]) => {
   files.forEach(file => {
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
@@ -395,10 +499,13 @@ const handleFiles = (files: File[]) => {
   });
 };
 
+/**
+ * 【函数】removeFile
+ * 作用：移除已选择但未发送的文件
+ */
 const removeFile = (id: string) => {
   uploadedFiles.value = uploadedFiles.value.filter(f => f.id !== id);
 };
-
 </script>
 
 <style scoped>

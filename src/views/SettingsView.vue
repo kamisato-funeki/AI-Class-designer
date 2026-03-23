@@ -1,3 +1,11 @@
+<!--
+  系统设置页面 (SettingsView)
+  业务逻辑：
+  1. 提供应用级别的配置项，通过侧边菜单划分不同的设置维度。
+  2. 通用设置：支持暗黑/亮色主题实时切换、语言和时区配置。
+  3. 通知设置：控制系统通知的开启与关闭。
+  4. 逻辑集成：与 settingsStore 深度绑定以保持全局状态同步。
+-->
 <template>
   <a-spin :spinning="loading">
     <div class="settings-container">
@@ -6,7 +14,7 @@
       </div>
 
       <div class="settings-layout">
-        <!-- Left Menu -->
+        <!-- 左侧菜单：设置分类导航 -->
         <div class="settings-menu">
           <a-menu v-model:selectedKeys="selectedKeys" mode="inline" style="border-right: 0">
             <a-menu-item key="general">通用设置</a-menu-item>
@@ -15,7 +23,7 @@
           </a-menu>
         </div>
 
-        <!-- Right Panel -->
+        <!-- 右侧面板：设置详情项 -->
         <div class="settings-content">
           <div v-show="selectedKeys[0] === 'general'">
             <h3 class="section-title">通用设置</h3>
@@ -88,21 +96,35 @@ import { ref, onMounted } from 'vue';
 import { useUserStore } from '../stores/userStore';
 import { useSettingsStore } from '../stores/settingsStore';
 
+/**
+ * 状态仓库初始化
+ */
+const userStore = useUserStore();   // 用户及认证仓库：提供当前登录者的元信息以供设置页预览
+const settingsStore = useSettingsStore(); // 全局设置仓库：管理系统的 UI 主题、语言映射以及通知分发等核心配置
 
-const userStore = useUserStore();
-const settingsStore = useSettingsStore();
+/**
+ * 【响应式变量】UI 路由控制
+ */
+const selectedKeys = ref(['general']); // 当前激活的设置分类导航项 (v-model)
+const loading = ref(true);             // 设置页面初始化加载锁
 
-const selectedKeys = ref(['general']);
-const loading = ref(true);
-
+/**
+ * 【预览表单容器】profileForm
+ * 作用：作为用户资料的本地快照，用于在设置界面顶层进行基础反馈
+ */
 const profileForm = ref({
   name: '',
   email: '',
   avatar: ''
 });
 
+/**
+ * 【生命周期钩子】onMounted
+ * 作用：从持久化/全局仓库中拉取数据完成设置视图的初始化
+ */
 onMounted(() => {
   loading.value = true;
+  // 同步用户简介（如果有可用数据）
   if (userStore.user) {
     profileForm.value = {
       name: userStore.user.name,
@@ -112,8 +134,6 @@ onMounted(() => {
   }
   loading.value = false;
 });
-
-
 </script>
 
 <style scoped>
