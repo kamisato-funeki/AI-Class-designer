@@ -192,7 +192,7 @@ const scrollToNode = (top: number) => {
 };
 
 const checkAndSendInitialWelcome = () => {
-  if (cocreationStore.chatHistory.length === 0 && currentCourse.value) {
+  if (cocreationStore.chatHistory.length === 0 && currentCourse.value && cocreationStore.currentCoursewareId === currentCourse.value.id) {
     const promptMsg = `请作为老师，准备${currentCourse.value.subject}${currentCourse.value.grade}级的课程，主题是《${currentCourse.value.title}》。`;
     cocreationStore.addMessage({
       id: uuidv4(), role: 'user', content: promptMsg, type: 'text', time: dayjs().format('YYYY-MM-DD HH:mm:ss')
@@ -203,18 +203,20 @@ const checkAndSendInitialWelcome = () => {
 
 onMounted(() => {
   scrollToBottom();
-  checkAndSendInitialWelcome();
 });
 
-watch(() => currentCourse.value?.id, () => {
-  if (currentCourse.value?.id) {
-    // allow store to update computed first
-    nextTick(() => {
-      checkAndSendInitialWelcome();
-      scrollToBottom();
-    });
-  }
-});
+watch(
+  () => [cocreationStore.currentCoursewareId, currentCourse.value?.id],
+  ([storeId, courseId]) => {
+    if (storeId && courseId && storeId === courseId) {
+      nextTick(() => {
+        checkAndSendInitialWelcome();
+        scrollToBottom();
+      });
+    }
+  },
+  { immediate: true }
+);
 
 const scrollToBottom = async () => {
   await nextTick();
