@@ -31,12 +31,12 @@
     </div>
 
     <div class="render-content">
-      <div v-show="activeTab === 'mindmap'" style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+      <div v-show="activeTab === 'mindmap'" style="width: 100%; height: 100%; display: flex; flex-direction: column; position: relative;">
         <div id="mindMapContainer" style="flex: 1; min-height: 0; width: 100%;"></div>
-        <div v-if="!cocreationStore.materialGenerated" class="generation-options"
+        <div v-if="!cocreationStore.materialGenerated" class="generation-options-floating"
           :class="{ 'dark-theme': settingsStore.theme === 'dark' }">
           <a-card size="small" title="需求与生成设置" class="generation-card">
-            <a-checkbox-group v-model:value="generateOptions">
+            <a-checkbox-group v-model:value="cocreationStore.generateOptions" style="display: flex; flex-direction: column; gap: 8px;">
               <a-checkbox value="ppt">PPT演示</a-checkbox>
               <a-checkbox value="doc">教案文档</a-checkbox>
               <a-checkbox value="video">相关视频</a-checkbox>
@@ -50,10 +50,10 @@
       </div>
 
       <template v-if="activeTab !== 'mindmap'">
-        <div v-if="!cocreationStore.materialGenerated" class="skeleton-wrapper">
+        <div v-if="!cocreationStore.generatedOptions.includes(activeTab)" class="skeleton-wrapper">
           <div class="ppt-placeholder">
-            <h2>在此生成课件包</h2>
-            <p>在左侧对话以生成大纲，确认大纲后生成</p>
+            <h2>等待生成相应内容</h2>
+            <p>在“课程大纲”中勾选并确认生成该部分内容</p>
           </div>
         </div>
         <div v-else class="preview-wrapper"
@@ -74,15 +74,18 @@
     </div>
 
     <!-- Independent AI Prompt for Board -->
-    <div class="board-prompt-area" v-if="cocreationStore.materialGenerated">
+    <div class="board-prompt-area" v-if="activeTab === 'mindmap' || cocreationStore.generatedOptions.includes(activeTab)">
       <a-input-search v-model:value="boardPrompt" placeholder="对当前页面内容的局部修改指令..." enter-button="发送修改"
         @search="handleBoardPrompt" />
     </div>
 
-    <div class="render-footer" v-if="cocreationStore.materialGenerated">
+    <div class="render-footer" v-if="cocreationStore.generatedOptions.length > 0">
       <a-space>
+        <a-button v-if="activeTab !== 'mindmap' && cocreationStore.generatedOptions.includes(activeTab)" @click="downloadSingleMaterial(activeTab)">
+          <DownloadOutlined /> 下载{{ getMaterialName(activeTab) }}
+        </a-button>
         <a-button @click="downloadMaterial">
-          <DownloadOutlined /> 下载资料包
+          <DownloadOutlined /> 下载全部内容
         </a-button>
       </a-space>
     </div>
@@ -149,7 +152,7 @@ const zoomLevels = reactive<Record<'mindmap' | 'ppt' | 'doc' | 'video' | 'html',
   html: 1.0
 });
 
-const generateOptions = ref(['ppt', 'doc', 'video', 'html']);
+
 const isGeneratingMaterials = ref(false);
 const boardPrompt = ref('');
 const isFullscreenEdit = ref(false);
@@ -214,16 +217,17 @@ watch(activeTab, (val) => {
 });
 
 const handleConfirmSummary = () => {
-  if (generateOptions.value.length === 0) {
+  if (cocreationStore.generateOptions.length === 0) {
     message.warning('请至少选择一项需要生成的内容');
     return;
   }
   isGeneratingMaterials.value = true;
-  message.loading({ content: '正在生成资料包...', key: 'gen', duration: 0 });
+  message.loading({ content: '正在生成对应的资料...', key: 'gen', duration: 0 });
   setTimeout(() => {
     isGeneratingMaterials.value = false;
     cocreationStore.materialGenerated = true;
-    message.success({ content: '资料生成成功', key: 'gen', duration: 2 });
+    cocreationStore.generatedOptions = [...cocreationStore.generateOptions];
+    message.success({ content: '对应部分资料生成成功', key: 'gen', duration: 2 });
   }, 2000);
 };
 
@@ -235,7 +239,18 @@ watch(() => settingsStore.theme, (theme) => {
 });
 
 const downloadMaterial = () => {
-  message.success('开始下载资料包...');
+  message.success('开始下载全部资料包...');
+};
+
+const getMaterialName = (tab: string) => {
+  const map: Record<string, string> = {
+    ppt: 'PPT', doc: '教案', video: '视频', html: 'H5'
+  };
+  return map[tab] || '';
+};
+
+const downloadSingleMaterial = (tab: string) => {
+  message.success(`开始下载单项资料：${getMaterialName(tab)}...`);
 };
 
 const handleBoardPrompt = (value: string) => {
@@ -340,10 +355,12 @@ const handleSaveEdit = () => {
   outline: none;
 }
 
-.generation-options {
-  padding: 16px;
-  background: var(--app-bg);
-  border-top: 1px solid var(--app-border);
+.generation-options-floating {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  width: 250px;
 }
 
 .generation-card {

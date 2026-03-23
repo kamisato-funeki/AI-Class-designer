@@ -121,7 +121,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed } from 'vue';
+import { ref, onMounted, nextTick, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { message } from 'ant-design-vue';
 import {
@@ -135,6 +135,7 @@ import { useUserStore } from '../../stores/userStore';
 import { useCoursewareStore } from '../../stores/coursewareStore';
 import { streamChat, stopGeneration } from '../../utils/chat';
 import { startVoiceToText, type VttSession } from '../../utils/vTt';
+import type { ChatMessage } from '../../types/types';
 import dayjs from 'dayjs';
 import { marked } from 'marked';
 
@@ -190,15 +191,28 @@ const scrollToNode = (top: number) => {
   }
 };
 
-onMounted(() => {
-  scrollToBottom();
-  // Automatically trigger an initial welcome message using Langchain system prompt combining course info
+const checkAndSendInitialWelcome = () => {
   if (cocreationStore.chatHistory.length === 0 && currentCourse.value) {
     const promptMsg = `请作为老师，准备${currentCourse.value.subject}${currentCourse.value.grade}级的课程，主题是《${currentCourse.value.title}》。`;
     cocreationStore.addMessage({
       id: uuidv4(), role: 'user', content: promptMsg, type: 'text', time: dayjs().format('YYYY-MM-DD HH:mm:ss')
     });
     handleSendChat(promptMsg);
+  }
+};
+
+onMounted(() => {
+  scrollToBottom();
+  checkAndSendInitialWelcome();
+});
+
+watch(() => currentCourse.value?.id, () => {
+  if (currentCourse.value?.id) {
+    // allow store to update computed first
+    nextTick(() => {
+      checkAndSendInitialWelcome();
+      scrollToBottom();
+    });
   }
 });
 
@@ -245,44 +259,50 @@ const handleSend = () => {
 };
 
 const handleSendChat = async (text: string) => {
+  const activeCourseId = currentCourse.value?.id;
   cocreationStore.isGenerating = true;
-  cocreationStore.addMessage({
+  
+  const assistantMsg: ChatMessage = {
     id: uuidv4(), role: 'assistant', content: '', type: 'text', time: dayjs().format('YYYY-MM-DD HH:mm:ss')
-  });
+  };
+  cocreationStore.addMessage(assistantMsg);
 
   await streamChat(
     text,
     (token) => {
       // Stream output
-      if (cocreationStore.chatHistory.length > 0) {
-        const lastMsg = cocreationStore.chatHistory[cocreationStore.chatHistory.length - 1];
-        if (lastMsg && lastMsg.role === 'assistant') {
-          cocreationStore.updateLastMessage(lastMsg.content + token);
-          scrollToBottom();
-        }
+      assistantMsg.content += token;
+      if (currentCourse.value?.id === activeCourseId) {
+        scrollToBottom();
       }
     },
     (parsedCourseName) => {
-      cocreationStore.isGenerating = false;
+      if (activeCourseId && cocreationStore.coursesData[activeCourseId]) {
+        cocreationStore.coursesData[activeCourseId].isGenerating = false;
+      }
+      
       // Clean up the `<course_name>` xml tags from the chat history
-      const lastMsg = cocreationStore.chatHistory[cocreationStore.chatHistory.length - 1];
-      if (lastMsg && lastMsg.role === 'assistant') {
-        const cleanContent = lastMsg.content.replace(/<course_name>.*?<\/course_name>/g, '').trim();
-        cocreationStore.updateLastMessage(cleanContent);
-        // Add pseudo-suggestions below AI reply
-        const suggestions = ['我觉得这个大纲不错', '能否再细化一下案例部分？'];
-        lastMsg.suggestions = suggestions;
+      const cleanContent = assistantMsg.content.replace(/<course_name>.*?<\/course_name>/g, '').trim();
+      assistantMsg.content = cleanContent;
+      // Add pseudo-suggestions below AI reply
+      assistantMsg.suggestions = ['我觉得这个大纲不错', '能否再细化一下案例部分？'];
+      
+      if (currentCourse.value?.id === activeCourseId) {
         calculateScrollNodes();
       }
 
       // Update course title if parsed
-      if (parsedCourseName && currentCourse.value) {
-        coursewareStore.updateCourseware(currentCourse.value.id, { title: parsedCourseName });
+      if (parsedCourseName && activeCourseId) {
+        coursewareStore.updateCourseware(activeCourseId, { title: parsedCourseName });
       }
     },
     (err) => {
-      message.error('对话生成错误: ' + err.message);
-      cocreationStore.isGenerating = false;
+      if (currentCourse.value?.id === activeCourseId) {
+        message.error('对话生成错误: ' + err.message);
+      }
+      if (activeCourseId && cocreationStore.coursesData[activeCourseId]) {
+        cocreationStore.coursesData[activeCourseId].isGenerating = false;
+      }
     },
     currentCourse.value ? {
       title: currentCourse.value.title,

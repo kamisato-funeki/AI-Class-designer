@@ -157,3 +157,14 @@ export interface EducationNews {
   time: string
   images: string[]
 }
+
+export interface CourseCocreationData {
+  coursewareId: string
+  materials: BoardMaterial[]
+  chatHistory: ChatMessage[]
+  isGenerating: boolean
+  materialGenerated: boolean
+  generateOptions: string[]
+  generatedOptions: string[]
+  hideSummary: boolean
+}

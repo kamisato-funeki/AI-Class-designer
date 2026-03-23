@@ -12,10 +12,31 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
 import CocreationLeft from './cocreationComp/CocreationLeft.vue';
 import CocreationRight from './cocreationComp/CocreationRight.vue';
+import { useCocreationStore } from '../stores/cocreationStore';
+
+const route = useRoute();
+const cocreationStore = useCocreationStore();
+
+const initCourseware = () => {
+  const id = route.query.id as string;
+  if (id) {
+    cocreationStore.loadMaterials(id);
+  }
+};
+
+onMounted(() => {
+  initCourseware();
+});
+
+watch(() => route.query.id, () => {
+  initCourseware();
+});
 </script>
 
 <style scoped>

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { BoardMaterial, ChatMessage } from '../types/types'
+import { ref, computed } from 'vue'
+import type { BoardMaterial, ChatMessage, CourseCocreationData } from '../types/types'
 import { apiGetCocreationMaterials, apiCocreationChat } from '../api/cocreation'
 import { v4 as uuidv4 } from 'uuid'
 import dayjs from 'dayjs'
@@ -9,14 +9,68 @@ const now = () => dayjs().format('YYYY-MM-DD HH:mm:ss')
 
 export const useCocreationStore = defineStore('cocreation', () => {
   const currentCoursewareId = ref<string>('')
-  const materials = ref<BoardMaterial[]>([])
-  const chatHistory = ref<ChatMessage[]>([])
-  const isGenerating = ref<boolean>(false)
-  const materialGenerated = ref<boolean>(false)
-  const hideSummary = ref<boolean>(false)
+  const coursesData = ref<Record<string, CourseCocreationData>>({})
+
+  const getOrCreateCourseData = (id: string) => {
+    if (!coursesData.value[id]) {
+      coursesData.value[id] = {
+        coursewareId: id,
+        materials: [],
+        chatHistory: [],
+        isGenerating: false,
+        materialGenerated: false,
+        generateOptions: ['ppt', 'doc', 'video', 'html'],
+        generatedOptions: [],
+        hideSummary: false,
+      }
+    }
+    return coursesData.value[id]
+  }
+
+  const currentData = computed(() => {
+    if (!currentCoursewareId.value) return null
+    return getOrCreateCourseData(currentCoursewareId.value)
+  })
+
+  const materials = computed({
+    get: () => currentData.value?.materials || [],
+    set: (val: BoardMaterial[]) => { if (currentData.value) currentData.value.materials = val }
+  })
+
+  const chatHistory = computed({
+    get: () => currentData.value?.chatHistory || [],
+    set: (val: ChatMessage[]) => { if (currentData.value) currentData.value.chatHistory = val }
+  })
+
+  const isGenerating = computed({
+    get: () => currentData.value?.isGenerating || false,
+    set: (val: boolean) => { if (currentData.value) currentData.value.isGenerating = val }
+  })
+
+  const materialGenerated = computed({
+    get: () => currentData.value?.materialGenerated || false,
+    set: (val: boolean) => { if (currentData.value) currentData.value.materialGenerated = val }
+  })
+
+  const generateOptions = computed({
+    get: () => currentData.value?.generateOptions || ['ppt', 'doc', 'video', 'html'],
+    set: (val: string[]) => { if (currentData.value) currentData.value.generateOptions = val }
+  })
+
+  const generatedOptions = computed({
+    get: () => currentData.value?.generatedOptions || [],
+    set: (val: string[]) => { if (currentData.value) currentData.value.generatedOptions = val }
+  })
+
+  const hideSummary = computed({
+    get: () => currentData.value?.hideSummary || false,
+    set: (val: boolean) => { if (currentData.value) currentData.value.hideSummary = val }
+  })
 
   const loadMaterials = async (id: string) => {
     currentCoursewareId.value = id
+    // Ensure the data structure exists for this id
+    getOrCreateCourseData(id)
     try {
       const res = await apiGetCocreationMaterials(id)
       materials.value = res.data.data
@@ -62,15 +116,18 @@ export const useCocreationStore = defineStore('cocreation', () => {
   }
 
   return {
+    coursesData,
     currentCoursewareId,
     materials,
     chatHistory,
+    isGenerating,
+    materialGenerated,
+    generateOptions,
+    generatedOptions,
+    hideSummary,
     loadMaterials,
     sendChatMessage,
     addMessage,
     updateLastMessage,
-    isGenerating,
-    materialGenerated,
-    hideSummary,
   }
 })
