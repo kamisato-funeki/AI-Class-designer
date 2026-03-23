@@ -8,39 +8,42 @@
 
     <div class="chat-area-wrapper" style="position: relative; flex: 1; display: flex; overflow: hidden;">
       <div class="chat-history" ref="chatHistoryRef">
-      <template v-for="(msg, index) in cocreationStore.chatHistory" :key="msg.id">
-        <div class="chat-message-row" :class="msg.role">
-          <a-avatar v-if="msg.role === 'assistant'" class="message-avatar ai-avatar"
-            :src="'https://api.dicebear.com/7.x/bottts/svg?seed=deepseek'" />
-          <div class="chat-bubble-container">
-            <div class="chat-bubble" :class="msg.role">
-              <template v-if="msg.role === 'user'">{{ msg.content }}</template>
-              <div v-else class="markdown-body" v-html="renderMarkdown(msg.content)"></div>
-            </div>
-            <!-- Suggested Replies -->
-            <div v-if="msg.role === 'assistant' && msg.suggestions && msg.suggestions.length > 0" class="suggestions-container">
-              <a-button v-for="(suggestion, sIdx) in msg.suggestions" :key="sIdx" class="suggestion-btn" size="small" shape="round" @click="handleSuggestedReply(suggestion)">
-                {{ suggestion }}
-              </a-button>
-            </div>
-            <!-- Hover Actions for AI -->
-            <div v-if="msg.role === 'assistant'" class="message-actions">
-              <a-tooltip title="复制">
-                <a-button type="text" size="small" class="action-btn" @click="handleCopy(msg.content)">
-                  <CopyOutlined />
+        <template v-for="(msg, index) in cocreationStore.chatHistory" :key="msg.id">
+          <div class="chat-message-row" :class="msg.role">
+            <a-avatar v-if="msg.role === 'assistant'" class="message-avatar ai-avatar"
+              :src="'https://api.dicebear.com/7.x/bottts/svg?seed=deepseek'" />
+            <div class="chat-bubble-container">
+              <div class="chat-bubble" :class="msg.role">
+                <template v-if="msg.role === 'user'">{{ msg.content }}</template>
+                <div v-else class="markdown-body" v-html="renderMarkdown(msg.content)"></div>
+              </div>
+              <!-- Suggested Replies -->
+              <div v-if="msg.role === 'assistant' && msg.suggestions && msg.suggestions.length > 0"
+                class="suggestions-container">
+                <a-button v-for="(suggestion, sIdx) in msg.suggestions" :key="sIdx" class="suggestion-btn" size="small"
+                  shape="round" @click="handleSuggestedReply(suggestion)">
+                  {{ suggestion }}
                 </a-button>
-              </a-tooltip>
-              <a-tooltip title="重新生成" v-if="index === cocreationStore.chatHistory.length - 1 && !cocreationStore.isGenerating">
-                <a-button type="text" size="small" class="action-btn" @click="handleRegenerate">
-                  <ReloadOutlined />
-                </a-button>
-              </a-tooltip>
+              </div>
+              <!-- Hover Actions for AI -->
+              <div v-if="msg.role === 'assistant'" class="message-actions">
+                <a-tooltip title="复制">
+                  <a-button type="text" size="small" class="action-btn" @click="handleCopy(msg.content)">
+                    <CopyOutlined />
+                  </a-button>
+                </a-tooltip>
+                <a-tooltip title="重新生成"
+                  v-if="index === cocreationStore.chatHistory.length - 1 && !cocreationStore.isGenerating">
+                  <a-button type="text" size="small" class="action-btn" @click="handleRegenerate">
+                    <ReloadOutlined />
+                  </a-button>
+                </a-tooltip>
+              </div>
             </div>
+            <a-avatar v-if="msg.role === 'user'" class="message-avatar user-avatar"
+              :src="userStore.user?.avatar || 'https://api.dicebear.com/7.x/miniavs/svg?seed=1'" />
           </div>
-          <a-avatar v-if="msg.role === 'user'" class="message-avatar user-avatar"
-            :src="userStore.user?.avatar || 'https://api.dicebear.com/7.x/miniavs/svg?seed=1'" />
-        </div>
-      </template>
+        </template>
       </div>
 
       <!-- Scrollbar Nodes Overlay -->
@@ -101,7 +104,8 @@
         </a-textarea>
         <div style="padding: 0 8px; display: flex; align-items: center;">
           <a-tooltip title="语音输入">
-            <AudioOutlined v-if="!cocreationStore.isGenerating" class="cursor-pointer action-icon" @click="handleVoiceInput"
+            <AudioOutlined v-if="!cocreationStore.isGenerating" class="cursor-pointer action-icon"
+              @click="handleVoiceInput"
               :style="{ fontSize: '18px', color: isRecording ? 'var(--color-error)' : 'inherit' }" />
           </a-tooltip>
           <a-tooltip title="发送按钮">
@@ -190,11 +194,11 @@ onMounted(() => {
   scrollToBottom();
   // Automatically trigger an initial welcome message using Langchain system prompt combining course info
   if (cocreationStore.chatHistory.length === 0 && currentCourse.value) {
-     const promptMsg = `请作为老师，准备${currentCourse.value.subject}${currentCourse.value.grade}级的课程，主题是《${currentCourse.value.title}》。`;
-     cocreationStore.addMessage({
-       id: uuidv4(), role: 'user', content: promptMsg, type: 'text', time: dayjs().format('YYYY-MM-DD HH:mm:ss')
-     });
-     handleSendChat(promptMsg);
+    const promptMsg = `请作为老师，准备${currentCourse.value.subject}${currentCourse.value.grade}级的课程，主题是《${currentCourse.value.title}》。`;
+    cocreationStore.addMessage({
+      id: uuidv4(), role: 'user', content: promptMsg, type: 'text', time: dayjs().format('YYYY-MM-DD HH:mm:ss')
+    });
+    handleSendChat(promptMsg);
   }
 });
 
@@ -382,21 +386,25 @@ const removeFile = (id: string) => {
   flex-direction: column;
   height: 100%;
 }
+
 .course-header {
   padding: 12px 24px;
   background: var(--app-bg);
   border-bottom: 1px solid var(--app-border);
 }
+
 .course-header .course-title {
   font-weight: bold;
   font-size: 16px;
   color: var(--app-text-main);
 }
+
 .course-header .course-meta {
   font-size: 12px;
   color: var(--app-text-sub);
   margin-top: 4px;
 }
+
 .chat-history {
   flex: 1;
   padding: 24px;
@@ -407,48 +415,277 @@ const removeFile = (id: string) => {
   position: relative;
   scrollbar-width: none;
 }
+
 .chat-history::-webkit-scrollbar {
   display: none;
 }
-.chat-message-row { display: flex; gap: 12px; align-items: flex-start; width: 100%; }
-.chat-message-row.user { flex-direction: row; justify-content: flex-end; }
-.chat-message-row.assistant { flex-direction: row; justify-content: flex-start; }
-.message-avatar { flex-shrink: 0; }
-.chat-bubble-container { display: flex; flex-direction: column; max-width: 80%; position: relative; }
-.chat-bubble { padding: 12px 16px; border-radius: 12px; line-height: 1.6; font-size: 14px; word-break: break-word; }
-.chat-bubble.user { background-color: var(--app-bg); border: 1px solid var(--color-primary); color: var(--app-text-main); border-top-right-radius: 4px; }
-.chat-bubble.assistant { background-color: var(--app-hover); border: 1px solid var(--app-border); color: var(--app-text-main); border-top-left-radius: 4px; font-size: 13px; }
-.suggestions-container { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-.suggestion-btn { font-size: 12px; color: var(--color-primary); border-color: var(--color-primary); background: transparent; }
-.message-actions { display: flex; gap: 4px; margin-top: 4px; opacity: 0; transition: opacity 0.2s; }
-.chat-message-row:hover .message-actions { opacity: 1; }
-.action-btn { color: var(--app-text-sub); }
-.action-btn:hover { color: var(--color-primary); background-color: var(--app-bg); }
-.summary-card { align-self: center; width: 90%; border-color: var(--color-primary); box-shadow: var(--shadow-sm); margin-top: 16px; }
-.chat-input-area { padding: 16px; border-top: 1px solid var(--app-border); background: var(--app-panel); position: relative; display: flex; flex-direction: column; }
-.action-icon { transition: opacity 0.2s; }
-.action-icon:hover { opacity: 0.7; }
-.drag-mask { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(24, 144, 255, 0.1); border: 2px dashed var(--color-primary); display: flex; align-items: center; justify-content: center; z-index: 10; font-size: 16px; color: var(--color-primary); font-weight: 500; pointer-events: none; }
-.file-preview-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; width: 100%; }
-.file-preview-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 60px; height: 60px; border: 1px solid var(--app-border); border-radius: 6px; background: var(--app-bg); overflow: hidden; padding: 4px; }
-.file-preview-item.is-image { padding: 0; }
-.image-preview { width: 100%; height: 100%; object-fit: cover; }
-.file-info { margin-top: 2px; width: 100%; text-align: center; }
-.file-name { font-size: 10px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--app-text-sub); }
-.file-delete-mask { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); color: white; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; cursor: pointer; font-size: 16px; }
-.file-preview-item:hover .file-delete-mask { opacity: 1; }
+
+.chat-message-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.chat-message-row.user {
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+.chat-message-row.assistant {
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.message-avatar {
+  flex-shrink: 0;
+}
+
+.chat-bubble-container {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+  position: relative;
+}
+
+.chat-bubble {
+  padding: 12px 16px;
+  border-radius: 12px;
+  line-height: 1.6;
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.chat-bubble.user {
+  background-color: var(--app-bg);
+  border: 1px solid var(--color-primary);
+  color: var(--app-text-main);
+  border-top-right-radius: 4px;
+}
+
+.chat-bubble.assistant {
+  background-color: var(--app-hover);
+  border: 1px solid var(--app-border);
+  color: var(--app-text-main);
+  border-top-left-radius: 4px;
+  font-size: 13px;
+}
+
+.suggestions-container {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.suggestion-btn {
+  font-size: 12px;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: transparent;
+}
+
+.message-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.chat-message-row:hover .message-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  color: var(--app-text-sub);
+}
+
+.action-btn:hover {
+  color: var(--color-primary);
+  background-color: var(--app-bg);
+}
+
+.summary-card {
+  align-self: center;
+  width: 90%;
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+  margin-top: 16px;
+}
+
+.chat-input-area {
+  padding: 16px;
+  border-top: 1px solid var(--app-border);
+  background: var(--app-panel);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.action-icon {
+  transition: opacity 0.2s;
+}
+
+.action-icon:hover {
+  opacity: 0.7;
+}
+
+.drag-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(24, 144, 255, 0.1);
+  border: 2px dashed var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  font-size: 16px;
+  color: var(--color-primary);
+  font-weight: 500;
+  pointer-events: none;
+}
+
+.file-preview-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.file-preview-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  background: var(--app-bg);
+  overflow: hidden;
+  padding: 4px;
+}
+
+.file-preview-item.is-image {
+  padding: 0;
+}
+
+.image-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.file-info {
+  margin-top: 2px;
+  width: 100%;
+  text-align: center;
+}
+
+.file-name {
+  font-size: 10px;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--app-text-sub);
+}
+
+.file-delete-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.file-preview-item:hover .file-delete-mask {
+  opacity: 1;
+}
 
 .markdown-body {
   font-family: inherit;
 }
-:deep(.markdown-body p) { margin-bottom: 8px; }
-:deep(.markdown-body p:last-child) { margin-bottom: 0; }
-:deep(.markdown-body ul, .markdown-body ol) { padding-left: 20px; margin-bottom: 8px; }
-:deep(.markdown-body li) { margin-bottom: 4px; }
-:deep(.markdown-body code) { background: rgba(120, 120, 120, 0.1); padding: 2px 4px; border-radius: 4px; }
-.scrollbar-nodes-overlay { position: absolute; top: 0; right: 0; bottom: 0; width: 8px; pointer-events: none; z-index: 10; margin: 8px 0; }
-.scroll-node { position: absolute; right: 6px; width: 10px; height: 10px; background: var(--color-primary); border-radius: 50%; cursor: pointer; pointer-events: auto; opacity: 0.6; transition: all 0.2s; transform: translateY(-50%); }
-.scroll-node:hover { opacity: 1; transform: translateY(-50%) scale(1.5); }
-.scroll-node-bottom { top: 100%; width: 14px; height: 14px; right: 4px; opacity: 0.8; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
-.scroll-node-bottom:hover { opacity: 1; transform: translateY(-50%) scale(1.2); }
+
+:deep(.markdown-body p) {
+  margin-bottom: 8px;
+}
+
+:deep(.markdown-body p:last-child) {
+  margin-bottom: 0;
+}
+
+:deep(.markdown-body ul, .markdown-body ol) {
+  padding-left: 20px;
+  margin-bottom: 8px;
+}
+
+:deep(.markdown-body li) {
+  margin-bottom: 4px;
+}
+
+:deep(.markdown-body code) {
+  background: rgba(120, 120, 120, 0.1);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.scrollbar-nodes-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  pointer-events: none;
+  z-index: 10;
+  margin: 8px 0;
+}
+
+.scroll-node {
+  position: absolute;
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0.6;
+  transition: all 0.2s;
+  transform: translateY(-50%);
+}
+
+.scroll-node:hover {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.5);
+}
+
+.scroll-node-bottom {
+  top: 100%;
+  width: 14px;
+  height: 14px;
+  right: 4px;
+  opacity: 0.8;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.scroll-node-bottom:hover {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.2);
+}
 </style>

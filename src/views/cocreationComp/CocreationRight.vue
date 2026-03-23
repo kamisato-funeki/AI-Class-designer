@@ -20,7 +20,8 @@
             <a-button @click="zoomOut">
               <ZoomOutOutlined />
             </a-button>
-            <a-button style="width: 60px; pointer-events: none;">{{ Math.round((zoomLevels[activeTab] || 1) * 100) }}%</a-button>
+            <a-button style="width: 60px; pointer-events: none;">{{ Math.round((zoomLevels[activeTab] || 1) * 100)
+              }}%</a-button>
             <a-button @click="zoomIn">
               <ZoomInOutlined />
             </a-button>
@@ -32,7 +33,8 @@
     <div class="render-content">
       <div v-show="activeTab === 'mindmap'" style="width: 100%; height: 100%; display: flex; flex-direction: column;">
         <div id="mindMapContainer" style="flex: 1; min-height: 0; width: 100%;"></div>
-        <div v-if="!cocreationStore.materialGenerated" class="generation-options" :class="{ 'dark-theme': settingsStore.theme === 'dark' }">
+        <div v-if="!cocreationStore.materialGenerated" class="generation-options"
+          :class="{ 'dark-theme': settingsStore.theme === 'dark' }">
           <a-card size="small" title="需求与生成设置" class="generation-card">
             <a-checkbox-group v-model:value="generateOptions">
               <a-checkbox value="ppt">PPT演示</a-checkbox>
@@ -54,21 +56,27 @@
             <p>在左侧对话以生成大纲，确认大纲后生成</p>
           </div>
         </div>
-        <div v-else class="preview-wrapper" style="width: 100%; height: 100%; overflow: auto; display: flex; justify-content: center; align-items: center;">
-          <vue-office-pptx v-if="activeTab === 'ppt'" :src="pptUrl" :style="`zoom: ${zoomLevels['ppt']}; width: 100%; height: 100%;`" />
+        <div v-else class="preview-wrapper"
+          style="width: 100%; height: 100%; overflow: auto; display: flex; justify-content: center; align-items: center;">
+          <vue-office-pptx v-if="activeTab === 'ppt'" :src="pptUrl"
+            :style="`zoom: ${zoomLevels['ppt']}; width: 100%; height: 100%;`" />
 
-          <vue-office-docx v-else-if="activeTab === 'doc'" :src="docUrl" :style="`zoom: ${zoomLevels['doc']}; width: 100%; height: 100%;`" />
+          <vue-office-docx v-else-if="activeTab === 'doc'" :src="docUrl"
+            :style="`zoom: ${zoomLevels['doc']}; width: 100%; height: 100%;`" />
 
-          <video v-else-if="activeTab === 'video'" controls :src="videoUrl" :style="`zoom: ${zoomLevels['video']}; width: 100%; height: 100%; background: #000; border-radius: 8px;`"></video>
+          <video v-else-if="activeTab === 'video'" controls :src="videoUrl"
+            :style="`zoom: ${zoomLevels['video']}; width: 100%; height: 100%; background: #000; border-radius: 8px;`"></video>
 
-          <iframe v-else-if="activeTab === 'html'" :src="htmlUrl" :style="`zoom: ${zoomLevels['html']}; width: 100%; height: 100%; border: none; border-radius: 8px;`"></iframe>
+          <iframe v-else-if="activeTab === 'html'" :src="htmlUrl"
+            :style="`zoom: ${zoomLevels['html']}; width: 100%; height: 100%; border: none; border-radius: 8px;`"></iframe>
         </div>
       </template>
     </div>
 
     <!-- Independent AI Prompt for Board -->
     <div class="board-prompt-area" v-if="cocreationStore.materialGenerated">
-      <a-input-search v-model:value="boardPrompt" placeholder="对当前页面内容的局部修改指令..." enter-button="发送修改" @search="handleBoardPrompt" />
+      <a-input-search v-model:value="boardPrompt" placeholder="对当前页面内容的局部修改指令..." enter-button="发送修改"
+        @search="handleBoardPrompt" />
     </div>
 
     <div class="render-footer" v-if="cocreationStore.materialGenerated">
@@ -90,9 +98,15 @@
           <a-button type="text"><i>I</i></a-button>
           <a-button type="text"><u>U</u></a-button>
           <a-divider type="vertical" />
-          <a-button type="text"><AlignLeftOutlined /></a-button>
-          <a-button type="text"><AlignCenterOutlined /></a-button>
-          <a-button type="text"><AlignRightOutlined /></a-button>
+          <a-button type="text">
+            <AlignLeftOutlined />
+          </a-button>
+          <a-button type="text">
+            <AlignCenterOutlined />
+          </a-button>
+          <a-button type="text">
+            <AlignRightOutlined />
+          </a-button>
         </a-space>
       </div>
       <div class="mock-editor-content">
@@ -168,7 +182,7 @@ const initMindMap = () => {
     const container = document.getElementById('mindMapContainer');
     if (!container) return;
     if (mindMapInstance) mindMapInstance.destroy();
-    
+
     // @ts-expect-error simple-mind-map has incomplete typings
     mindMapInstance = new MindMap({
       el: container,
@@ -247,11 +261,13 @@ const handleSaveEdit = () => {
   flex-direction: column;
   height: 100%;
 }
+
 .render-header {
   padding: 0 24px;
   background: var(--app-panel);
   border-bottom: 1px solid var(--app-border);
 }
+
 .render-content {
   flex: 1;
   padding: 24px;
@@ -260,6 +276,7 @@ const handleSaveEdit = () => {
   justify-content: center;
   align-items: center;
 }
+
 .skeleton-wrapper {
   width: 100%;
   max-width: 800px;
@@ -270,6 +287,7 @@ const handleSaveEdit = () => {
   display: flex;
   justify-content: center;
 }
+
 .ppt-placeholder {
   width: 100%;
   aspect-ratio: 16/9;
@@ -282,17 +300,20 @@ const handleSaveEdit = () => {
   justify-content: center;
   color: var(--app-text-sub);
 }
+
 .board-prompt-area {
   padding: 12px 24px;
   background: var(--app-panel);
   border-top: 1px solid var(--app-border);
 }
+
 .render-footer {
   padding: 16px 24px;
   background: var(--app-panel);
   border-top: 1px solid var(--app-border);
   text-align: right;
 }
+
 .mock-editor-toolbar {
   background: var(--app-panel);
   padding: 8px 16px;
@@ -300,6 +321,7 @@ const handleSaveEdit = () => {
   box-shadow: var(--app-shadow);
   z-index: 10;
 }
+
 .mock-editor-content {
   flex: 1;
   overflow-y: auto;
@@ -307,6 +329,7 @@ const handleSaveEdit = () => {
   display: flex;
   justify-content: center;
 }
+
 .mock-page {
   background: var(--app-panel);
   width: 21cm;
@@ -316,15 +339,18 @@ const handleSaveEdit = () => {
   border-radius: 4px;
   outline: none;
 }
+
 .generation-options {
   padding: 16px;
   background: var(--app-bg);
   border-top: 1px solid var(--app-border);
 }
+
 .generation-card {
   border-color: var(--color-primary);
   box-shadow: var(--shadow-sm);
 }
+
 .dark-theme .generation-card {
   background-color: var(--app-panel);
   border-color: var(--app-border);

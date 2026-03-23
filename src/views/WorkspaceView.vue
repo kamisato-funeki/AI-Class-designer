@@ -164,7 +164,12 @@ const handleBgClick = (e: MouseEvent) => {
     }
   };
 
+  // 限制同时存在的点击动画数量，避免性能消耗过多
+  if (clickShapes.value.length >= 10) {
+    clickShapes.value.shift(); // 移除最旧的
+  }
   clickShapes.value.push(shape);
+
   setTimeout(() => {
     clickShapes.value = clickShapes.value.filter(s => s.id !== id);
   }, 1500);
@@ -174,8 +179,9 @@ onMounted(() => {
   workspaceStore.loadStats();
   coursewareStore.loadCoursewares();
 
-  // 生成初始背景图形
-  for (let i = 0; i < 30; i++) {
+  // 生成初始背景图形 (减少数量以优化性能)
+  const initialCount = 16;
+  for (let i = 0; i < initialCount; i++) {
     const size = 20 + Math.random() * 30;
     staticShapes.value.push({
       id: shapeIdCounter++,
@@ -222,6 +228,8 @@ onMounted(() => {
   position: absolute;
   pointer-events: none;
   opacity: 0;
+  will-change: transform, opacity;
+  transform: translateZ(0); /* 强制开启GPU加速 */
 }
 
 .bg-shape.square {
@@ -275,8 +283,8 @@ onMounted(() => {
 }
 
 @keyframes floatUp {
-  0% { transform: scale(0) rotate(0deg); opacity: 0.6; bottom: -20vh; }
-  100% { transform: scale(3) rotate(1000deg); opacity: 0; bottom: 100vh; }
+  0% { transform: translateY(0) scale(0) rotate(0deg); opacity: 0.6; }
+  100% { transform: translateY(-120vh) scale(3) rotate(1000deg); opacity: 0; }
 }
 
 @keyframes clickExplode {
@@ -325,8 +333,8 @@ onMounted(() => {
   width: 100%;
   height: 60%;
   background: linear-gradient(to bottom, transparent, var(--app-bg) 80%);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(4px); /* 降低磨砂半径以减少GPU开销 */
+  -webkit-backdrop-filter: blur(4px);
   z-index: 2;
   /* behind input */
   pointer-events: none;
