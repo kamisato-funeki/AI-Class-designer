@@ -214,10 +214,11 @@ watch(() => route.path, (newPath) => {
   else if (newPath.startsWith('/classes')) selectedKeys.value = ['classes'];
   else if (newPath.startsWith('/rag')) selectedKeys.value = ['rag'];
   else if (newPath.startsWith('/courseware')) selectedKeys.value = ['courseware'];
-  else if (newPath.startsWith('/design') || newPath.startsWith('/cocreation')) selectedKeys.value = ['design-center'];
+  else if (newPath.startsWith('/design')) selectedKeys.value = ['design-center'];
   else if (newPath.startsWith('/settings')) selectedKeys.value = ['settings'];
   else if (newPath.startsWith('/profile')) selectedKeys.value = ['profile'];
   else if (newPath.startsWith('/messages')) selectedKeys.value = ['messages'];
+  else selectedKeys.value = [];
 }, { immediate: true });
 
 const formState = ref({
