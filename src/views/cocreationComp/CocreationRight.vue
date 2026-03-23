@@ -33,9 +33,13 @@
     <div class="render-content">
       <div v-show="activeTab === 'mindmap'" style="width: 100%; height: 100%; display: flex; flex-direction: column; position: relative;">
         <div id="mindMapContainer" style="flex: 1; min-height: 0; width: 100%;"></div>
-        <div v-if="!cocreationStore.materialGenerated" class="generation-options-floating"
+        <div class="generation-options-floating"
           :class="{ 'dark-theme': settingsStore.theme === 'dark' }">
-          <a-card size="small" title="需求与生成设置" class="generation-card">
+          <a-card size="small" class="generation-card">
+            <template #title>
+              <span>需求与生成设置</span>
+              <a-tag v-if="cocreationStore.materialGenerated" color="green" style="margin-left: 8px; font-size: 11px;">已生成</a-tag>
+            </template>
             <a-checkbox-group v-model:value="cocreationStore.generateOptions" style="display: flex; flex-direction: column; gap: 8px;">
               <a-checkbox value="ppt">PPT演示</a-checkbox>
               <a-checkbox value="doc">教案文档</a-checkbox>
@@ -43,7 +47,9 @@
               <a-checkbox value="html">互动H5</a-checkbox>
             </a-checkbox-group>
             <div style="margin-top: 16px; text-align: right;">
-              <a-button type="primary" @click="handleConfirmSummary" :loading="isGeneratingMaterials">确认并生成</a-button>
+              <a-button type="primary" @click="handleConfirmSummary" :loading="isGeneratingMaterials">
+                {{ cocreationStore.materialGenerated ? '重新生成' : '确认并生成' }}
+              </a-button>
             </div>
           </a-card>
         </div>
@@ -180,27 +186,45 @@ const updateMindMapScale = () => {
   }
 };
 
+const DEFAULT_MINDMAP_DATA = {
+  data: { text: "课程大纲" },
+  children: [
+    { data: { text: "知识点 1" } },
+    { data: { text: "知识点 2" } },
+    { data: { text: "应用" }, children: [{ data: { text: "案例" } }] }
+  ]
+};
+
+const saveMindMapData = () => {
+  if (!mindMapInstance) return;
+  try {
+    // @ts-expect-error simple-mind-map typings incomplete
+    const data = mindMapInstance.getData();
+    cocreationStore.mindmapData = data;
+  } catch { /* ignore */ }
+};
+
 const initMindMap = () => {
   nextTick(() => {
     const container = document.getElementById('mindMapContainer');
     if (!container) return;
     if (mindMapInstance) mindMapInstance.destroy();
 
+    const savedData = cocreationStore.mindmapData;
+
     // @ts-expect-error simple-mind-map has incomplete typings
     mindMapInstance = new MindMap({
       el: container,
       theme: settingsStore.theme === 'dark' ? 'dark' : 'default',
-      data: {
-        data: { text: "课程大纲" },
-        children: [
-          { data: { text: "知识点 1" } },
-          { data: { text: "知识点 2" } },
-          { data: { text: "应用" }, children: [{ data: { text: "案例" } }] }
-        ]
-      }
+      data: savedData ?? DEFAULT_MINDMAP_DATA
     });
     // @ts-expect-error ignore simple-mind-map argument typings
     mindMapInstance.view.setScale(zoomLevels['mindmap']);
+
+    // Save data on any node change
+    const mm = mindMapInstance as unknown as { on: (ev: string, fn: () => void) => void };
+    mm.on('data_change', saveMindMapData);
+    mm.on('node_text_edit_end', saveMindMapData);
   });
 };
 
@@ -212,6 +236,13 @@ onMounted(() => {
 
 watch(activeTab, (val) => {
   if (val === 'mindmap') {
+    initMindMap();
+  }
+});
+
+// Re-init mind map when switching courses (store id changes)
+watch(() => cocreationStore.currentCoursewareId, () => {
+  if (activeTab.value === 'mindmap') {
     initMindMap();
   }
 });

@@ -167,4 +167,5 @@ export interface CourseCocreationData {
   generateOptions: string[]
   generatedOptions: string[]
   hideSummary: boolean
+  mindmapData?: object
 }

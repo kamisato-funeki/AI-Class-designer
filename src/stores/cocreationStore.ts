@@ -67,6 +67,11 @@ export const useCocreationStore = defineStore('cocreation', () => {
     set: (val: boolean) => { if (currentData.value) currentData.value.hideSummary = val }
   })
 
+  const mindmapData = computed({
+    get: () => currentData.value?.mindmapData || null,
+    set: (val: object | null) => { if (currentData.value) currentData.value.mindmapData = val ?? undefined }
+  })
+
   const loadMaterials = async (id: string) => {
     currentCoursewareId.value = id
     // Ensure the data structure exists for this id
@@ -125,6 +130,7 @@ export const useCocreationStore = defineStore('cocreation', () => {
     generateOptions,
     generatedOptions,
     hideSummary,
+    mindmapData,
     loadMaterials,
     sendChatMessage,
     addMessage,
