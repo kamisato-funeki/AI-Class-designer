@@ -30,10 +30,9 @@
         </a-select>
       </div>
 
-      <!-- Grid View -->
       <div v-if="viewMode === 'grid'" class="grid-view">
         <a-card hoverable class="cw-card" v-for="cw in filteredCoursewares" :key="cw.id"
-          @click="$router.push('/cocreation')">
+          @click="$router.push('/cocreation?id=' + cw.id)">
           <template #cover>
             <div class="cover-img" :style="{ backgroundImage: `url(${cw.coverImage})`, backgroundSize: 'cover' }">
               <div
@@ -62,7 +61,7 @@
               </a>
               <template #overlay>
                 <a-menu>
-                  <a-menu-item @click="$router.push('/cocreation')">继续编辑</a-menu-item>
+                  <a-menu-item @click="$router.push('/cocreation?id=' + cw.id)">继续编辑</a-menu-item>
                   <a-menu-divider />
                   <a-menu-item danger @click="handleDeleteCourseware(cw.id)">移至回收站</a-menu-item>
                 </a-menu>
@@ -87,7 +86,7 @@
               </a-tag>
             </template>
             <template v-else-if="column.key === 'action'">
-              <a-button type="link" @click="$router.push('/cocreation')">编辑</a-button>
+              <a-button type="link" @click="$router.push('/cocreation?id=' + record.key)">编辑</a-button>
               <a-button type="link" danger @click="handleDeleteCourseware(record.key)">删除</a-button>
             </template>
           </template>

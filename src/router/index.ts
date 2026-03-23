@@ -21,7 +21,14 @@ const router = createRouter({
         {
           path: 'cocreation',
           name: 'cocreation',
-          component: () => import('../views/CocreationView.vue')
+          component: () => import('../views/CocreationView.vue'),
+          beforeEnter: (to, from, next) => {
+            if (!to.query.id) {
+              next('/')
+            } else {
+              next()
+            }
+          }
         },
         {
           path: 'rag',

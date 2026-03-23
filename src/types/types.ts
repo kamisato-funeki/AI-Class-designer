@@ -108,6 +108,7 @@ export interface ChatMessage {
   fileUrl?: string
   fileName?: string
   time: string
+  suggestions?: string[]
 }
 
 export interface BoardMaterial {

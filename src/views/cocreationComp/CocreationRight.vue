@@ -2,9 +2,9 @@
   <div class="render-area">
     <div class="render-header" style="display: flex; justify-content: space-between; align-items: center;">
       <a-tabs v-model:activeKey="activeTab" style="flex: 1;">
+        <a-tab-pane key="mindmap" tab="课程大纲" />
         <a-tab-pane key="ppt" tab="PPT 预览" />
         <a-tab-pane key="doc" tab="教案内容" />
-        <a-tab-pane key="mindmap" tab="思维导图" />
         <a-tab-pane key="video" tab="相关视频" />
         <a-tab-pane key="html" tab="互动H5" />
       </a-tabs>
@@ -20,7 +20,7 @@
             <a-button @click="zoomOut">
               <ZoomOutOutlined />
             </a-button>
-            <a-button style="width: 60px; pointer-events: none;">{{ Math.round(zoomLevel * 100) }}%</a-button>
+            <a-button style="width: 60px; pointer-events: none;">{{ Math.round((zoomLevels[activeTab] || 1) * 100) }}%</a-button>
             <a-button @click="zoomIn">
               <ZoomInOutlined />
             </a-button>
@@ -30,24 +30,40 @@
     </div>
 
     <div class="render-content">
-      <div v-if="!cocreationStore.materialGenerated" class="skeleton-wrapper">
-        <div class="ppt-placeholder">
-          <h2>在此生成课件包</h2>
-          <p>在左侧对话以生成</p>
+      <div v-show="activeTab === 'mindmap'" style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+        <div id="mindMapContainer" style="flex: 1; min-height: 0; width: 100%;"></div>
+        <div v-if="!cocreationStore.materialGenerated" class="generation-options" :class="{ 'dark-theme': settingsStore.theme === 'dark' }">
+          <a-card size="small" title="需求与生成设置" class="generation-card">
+            <a-checkbox-group v-model:value="generateOptions">
+              <a-checkbox value="ppt">PPT演示</a-checkbox>
+              <a-checkbox value="doc">教案文档</a-checkbox>
+              <a-checkbox value="video">相关视频</a-checkbox>
+              <a-checkbox value="html">互动H5</a-checkbox>
+            </a-checkbox-group>
+            <div style="margin-top: 16px; text-align: right;">
+              <a-button type="primary" @click="handleConfirmSummary" :loading="isGeneratingMaterials">确认并生成</a-button>
+            </div>
+          </a-card>
         </div>
       </div>
-      <div v-else class="preview-wrapper" style="width: 100%; height: 100%; overflow: auto; display: flex; justify-content: center; align-items: center;">
-        <vue-office-pptx v-if="activeTab === 'ppt'" :src="pptUrl" :style="`zoom: ${zoomLevel}; width: 100%; height: 100%;`" />
 
-        <vue-office-docx v-else-if="activeTab === 'doc'" :src="docUrl" :style="`zoom: ${zoomLevel}; width: 100%; height: 100%;`" />
+      <template v-if="activeTab !== 'mindmap'">
+        <div v-if="!cocreationStore.materialGenerated" class="skeleton-wrapper">
+          <div class="ppt-placeholder">
+            <h2>在此生成课件包</h2>
+            <p>在左侧对话以生成大纲，确认大纲后生成</p>
+          </div>
+        </div>
+        <div v-else class="preview-wrapper" style="width: 100%; height: 100%; overflow: auto; display: flex; justify-content: center; align-items: center;">
+          <vue-office-pptx v-if="activeTab === 'ppt'" :src="pptUrl" :style="`zoom: ${zoomLevels['ppt']}; width: 100%; height: 100%;`" />
 
-        <!-- internal zoom -->
-        <div v-else-if="activeTab === 'mindmap'" id="mindMapContainer" style="width: 100%; height: 100%;"></div>
+          <vue-office-docx v-else-if="activeTab === 'doc'" :src="docUrl" :style="`zoom: ${zoomLevels['doc']}; width: 100%; height: 100%;`" />
 
-        <video v-else-if="activeTab === 'video'" controls :src="videoUrl" :style="`zoom: ${zoomLevel}; width: 100%; height: 100%; background: #000; border-radius: 8px;`"></video>
+          <video v-else-if="activeTab === 'video'" controls :src="videoUrl" :style="`zoom: ${zoomLevels['video']}; width: 100%; height: 100%; background: #000; border-radius: 8px;`"></video>
 
-        <iframe v-else-if="activeTab === 'html'" :src="htmlUrl" :style="`zoom: ${zoomLevel}; width: 100%; height: 100%; border: none; border-radius: 8px;`"></iframe>
-      </div>
+          <iframe v-else-if="activeTab === 'html'" :src="htmlUrl" :style="`zoom: ${zoomLevels['html']}; width: 100%; height: 100%; border: none; border-radius: 8px;`"></iframe>
+        </div>
+      </template>
     </div>
 
     <!-- Independent AI Prompt for Board -->
@@ -90,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue';
+import { ref, reactive, watch, nextTick, onMounted } from 'vue';
 import { message } from 'ant-design-vue';
 import {
   DownloadOutlined, ZoomInOutlined, ZoomOutOutlined, EditOutlined,
@@ -105,28 +121,37 @@ import { useSettingsStore } from '../../stores/settingsStore';
 const cocreationStore = useCocreationStore();
 const settingsStore = useSettingsStore();
 
-const activeTab = ref('ppt');
+const activeTab = ref<'mindmap' | 'ppt' | 'doc' | 'video' | 'html'>('mindmap');
 const pptUrl = ref('https://docs.google.com/presentation/d/1iIU9QfGpr9F101KvhVCsd9RtpyOQM0KBUIcf1l6W63s/edit?usp=sharing');
 const docUrl = ref('https://image2url.com/r2/default/files/1772455500887-fda7d267-b975-4a9a-abc9-d14489518cd5.docx');
 const videoUrl = ref('https://www.w3schools.com/html/mov_bbb.mp4');
 const htmlUrl = ref('https://bilibili.com');
 
-const zoomLevel = ref(1.0);
+const zoomLevels = reactive<Record<'mindmap' | 'ppt' | 'doc' | 'video' | 'html', number>>({
+  mindmap: 1.0,
+  ppt: 1.0,
+  doc: 1.0,
+  video: 1.0,
+  html: 1.0
+});
+
+const generateOptions = ref(['ppt', 'doc', 'video', 'html']);
+const isGeneratingMaterials = ref(false);
 const boardPrompt = ref('');
 const isFullscreenEdit = ref(false);
 
 let mindMapInstance: MindMap | null = null;
 
 const zoomIn = () => {
-  if (zoomLevel.value < 2.0) {
-    zoomLevel.value = parseFloat((zoomLevel.value + 0.1).toFixed(1));
+  if (zoomLevels[activeTab.value] < 2.0) {
+    zoomLevels[activeTab.value] = parseFloat((zoomLevels[activeTab.value] + 0.1).toFixed(1));
     updateMindMapScale();
   }
 };
 
 const zoomOut = () => {
-  if (zoomLevel.value > 0.3) {
-    zoomLevel.value = parseFloat((zoomLevel.value - 0.1).toFixed(1));
+  if (zoomLevels[activeTab.value] > 0.3) {
+    zoomLevels[activeTab.value] = parseFloat((zoomLevels[activeTab.value] - 0.1).toFixed(1));
     updateMindMapScale();
   }
 };
@@ -134,7 +159,7 @@ const zoomOut = () => {
 const updateMindMapScale = () => {
   if (activeTab.value === 'mindmap' && mindMapInstance) {
     // @ts-expect-error ignore simple-mind-map argument typings
-    mindMapInstance.view.setScale(zoomLevel.value);
+    mindMapInstance.view.setScale(zoomLevels['mindmap']);
   }
 };
 
@@ -158,21 +183,35 @@ const initMindMap = () => {
       }
     });
     // @ts-expect-error ignore simple-mind-map argument typings
-    mindMapInstance.view.setScale(zoomLevel.value);
+    mindMapInstance.view.setScale(zoomLevels['mindmap']);
   });
 };
 
-watch(activeTab, (val) => {
-  if (val === 'mindmap' && cocreationStore.materialGenerated) {
+onMounted(() => {
+  if (activeTab.value === 'mindmap') {
     initMindMap();
   }
 });
 
-watch(() => cocreationStore.materialGenerated, (val) => {
-  if (val && activeTab.value === 'mindmap') {
+watch(activeTab, (val) => {
+  if (val === 'mindmap') {
     initMindMap();
   }
 });
+
+const handleConfirmSummary = () => {
+  if (generateOptions.value.length === 0) {
+    message.warning('请至少选择一项需要生成的内容');
+    return;
+  }
+  isGeneratingMaterials.value = true;
+  message.loading({ content: '正在生成资料包...', key: 'gen', duration: 0 });
+  setTimeout(() => {
+    isGeneratingMaterials.value = false;
+    cocreationStore.materialGenerated = true;
+    message.success({ content: '资料生成成功', key: 'gen', duration: 2 });
+  }, 2000);
+};
 
 watch(() => settingsStore.theme, (theme) => {
   if (mindMapInstance) {
@@ -276,5 +315,18 @@ const handleSaveEdit = () => {
   padding: 96px;
   border-radius: 4px;
   outline: none;
+}
+.generation-options {
+  padding: 16px;
+  background: var(--app-bg);
+  border-top: 1px solid var(--app-border);
+}
+.generation-card {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+.dark-theme .generation-card {
+  background-color: var(--app-panel);
+  border-color: var(--app-border);
 }
 </style>
