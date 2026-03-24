@@ -339,7 +339,7 @@ const handleSend = () => {
 const handleSendChat = async (text: string) => {
   const activeCourseId = currentCourse.value?.id;
   cocreationStore.isGenerating = true;
-  
+
   const assistantMsg: ChatMessage = {
     id: uuidv4(), role: 'assistant', content: '', type: 'text', time: dayjs().format('YYYY-MM-DD HH:mm:ss')
   };
@@ -359,13 +359,13 @@ const handleSendChat = async (text: string) => {
       if (activeCourseId && cocreationStore.coursesData[activeCourseId]) {
         cocreationStore.coursesData[activeCourseId].isGenerating = false;
       }
-      
+
       // 清洗不可见标签
       const cleanContent = assistantMsg.content.replace(/<course_name>.*?<\/course_name>/g, '').trim();
       assistantMsg.content = cleanContent;
       // 模拟生成的建议回复
       assistantMsg.suggestions = ['我觉得这个大纲不错', '能否再细化一下案例部分？'];
-      
+
       if (currentCourse.value?.id === activeCourseId) {
         calculateScrollNodes();
       }
@@ -377,7 +377,8 @@ const handleSendChat = async (text: string) => {
     },
     (err) => {
       if (currentCourse.value?.id === activeCourseId) {
-        message.error('对话生成错误: ' + err.message);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        message.error('对话生成错误: ' + errorMsg);
       }
       if (activeCourseId && cocreationStore.coursesData[activeCourseId]) {
         cocreationStore.coursesData[activeCourseId].isGenerating = false;
@@ -457,10 +458,10 @@ let dragCounter = 0;
 
 const handleDragEnter = () => { dragCounter++; isDragging.value = true; };
 const handleDragLeave = () => { dragCounter--; if (dragCounter === 0) isDragging.value = false; };
-const handleDrop = (e: DragEvent) => { 
-  dragCounter = 0; 
-  isDragging.value = false; 
-  handleFiles(Array.from(e.dataTransfer?.files || [])); 
+const handleDrop = (e: DragEvent) => {
+  dragCounter = 0;
+  isDragging.value = false;
+  handleFiles(Array.from(e.dataTransfer?.files || []));
 };
 
 /**
@@ -805,7 +806,7 @@ const removeFile = (id: string) => {
 }
 
 .scroll-node-bottom {
-  top: 100%;
+  top: 99%;
   width: 14px;
   height: 14px;
   right: 4px;

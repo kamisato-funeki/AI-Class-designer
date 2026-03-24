@@ -1,200 +1,98 @@
-<!--
-  课件共创页面 - 右侧渲染区域 (CocreationRight)
-  业务逻辑：
-  1. 多模态内容预览：支持课程大纲（思维导图）、PPT、教案 (Doc)、视频及互动 H5 的切换。
-  2. 思维导图交互：集成 simple-mind-map 实现可编辑的课程逻辑大纲。
-  3. 资产生成管理：提供勾选框控制不同类型资料的生成，并支持异步生成进度展示。
-  4. 辅助功能：提供内容缩放、全屏在线编辑（模拟）、单项或全量资料下载。
-  5. 局部指令中心：在任何内容页均可发送局部修改指令，对当前看板内容进行精准调优。
--->
 <template>
   <div class="render-area">
-    <!-- 渲染区顶部：多维度页签导航 -->
-    <div class="render-header" style="display: flex; justify-content: space-between; align-items: center;">
-      <a-tabs v-model:activeKey="activeTab" style="flex: 1;">
-        <a-tab-pane key="mindmap" tab="课程大纲" />
-        <a-tab-pane key="ppt" tab="PPT 预览" />
-        <a-tab-pane key="doc" tab="教案内容" />
-        <a-tab-pane key="video" tab="相关视频" />
-        <a-tab-pane key="html" tab="互动H5" />
-      </a-tabs>
+    <!-- 顶部导航及各类全局/当前资产控制集 -->
+    <RightBoardHeader
+      v-model:activeTab="activeTab"
+      :zoomLevels="zoomLevels"
+      @zoomIn="zoomIn"
+      @zoomOut="zoomOut"
+      @openFullscreen="openFullscreenEdit"
+      @regenerate="handleRegenerateCurrent"
+    />
 
-      <!-- 右上角工具栏：缩放与编辑 -->
-      <div class="board-controls" v-if="cocreationStore.materialGenerated">
-        <a-space>
-          <a-button v-if="['ppt', 'doc'].includes(activeTab)" type="primary" size="small" @click="openFullscreenEdit">
-            <EditOutlined /> 全屏编辑
-          </a-button>
-          <!-- 缩放控制组 -->
-          <a-button-group size="small">
-            <a-button @click="zoomOut">
-              <ZoomOutOutlined />
-            </a-button>
-            <a-button style="width: 60px; pointer-events: none;">{{ Math.round((zoomLevels[activeTab] || 1) * 100)
-              }}%</a-button>
-            <a-button @click="zoomIn">
-              <ZoomInOutlined />
-            </a-button>
-          </a-button-group>
-        </a-space>
-      </div>
+    <div class="render-viewport">
+      <!-- 中间渲染核心区：思维导图 -->
+      <transition name="fade-slide">
+        <div v-show="activeTab === 'mindmap'" class="tab-page">
+          <RightMindMapBoard
+            :isGeneratingMaterials="isGeneratingMaterials"
+            @confirmSummary="handleConfirmSummary"
+            @resetView="handleResetView"
+          />
+        </div>
+      </transition>
+
+      <!-- 中间渲染核心区：其余资产资源预览 -->
+      <transition name="fade-slide">
+        <div v-show="activeTab !== 'mindmap'" class="tab-page">
+          <RightPreviewBoard
+            :activeTab="activeTab"
+            :zoomLevels="zoomLevels"
+            :pptUrl="pptUrl"
+            :docUrl="docUrl"
+            :videoUrl="videoUrl"
+            :htmlUrl="htmlUrl"
+            v-model:isFullscreenEdit="isFullscreenEdit"
+          />
+        </div>
+      </transition>
     </div>
 
-    <div class="render-content">
-      <div v-show="activeTab === 'mindmap'" style="width: 100%; height: 100%; display: flex; flex-direction: column; position: relative;">
-        <div id="mindMapContainer" style="flex: 1; min-height: 0; width: 100%;"></div>
-        <div class="generation-options-floating"
-          :class="{ 'dark-theme': settingsStore.theme === 'dark' }">
-          <a-card size="small" class="generation-card">
-            <template #title>
-              <span>需求与生成设置</span>
-              <a-tag v-if="cocreationStore.materialGenerated" color="green" style="margin-left: 8px; font-size: 11px;">已生成</a-tag>
-            </template>
-            <a-checkbox-group v-model:value="cocreationStore.generateOptions" style="display: flex; flex-direction: column; gap: 8px;">
-              <a-checkbox value="ppt">PPT演示</a-checkbox>
-              <a-checkbox value="doc">教案文档</a-checkbox>
-              <a-checkbox value="video">相关视频</a-checkbox>
-              <a-checkbox value="html">互动H5</a-checkbox>
-            </a-checkbox-group>
-            <div style="margin-top: 16px; text-align: right;">
-              <a-button type="primary" @click="handleConfirmSummary" :loading="isGeneratingMaterials">
-                {{ cocreationStore.materialGenerated ? '重新生成' : '确认并生成' }}
-              </a-button>
-            </div>
-          </a-card>
-        </div>
-      </div>
-
-      <template v-if="activeTab !== 'mindmap'">
-        <div v-if="!cocreationStore.generatedOptions.includes(activeTab)" class="skeleton-wrapper">
-          <div class="ppt-placeholder">
-            <h2>等待生成相应内容</h2>
-            <p>在“课程大纲”中勾选并确认生成该部分内容</p>
-          </div>
-        </div>
-        <div v-else class="preview-wrapper"
-          style="width: 100%; height: 100%; overflow: auto; display: flex; justify-content: center; align-items: center;">
-          <vue-office-pptx v-if="activeTab === 'ppt'" :src="pptUrl"
-            :style="`zoom: ${zoomLevels['ppt']}; width: 100%; height: 100%;`" />
-
-          <vue-office-docx v-else-if="activeTab === 'doc'" :src="docUrl"
-            :style="`zoom: ${zoomLevels['doc']}; width: 100%; height: 100%;`" />
-
-          <video v-else-if="activeTab === 'video'" controls :src="videoUrl"
-            :style="`zoom: ${zoomLevels['video']}; width: 100%; height: 100%; background: #000; border-radius: 8px;`"></video>
-
-          <iframe v-else-if="activeTab === 'html'" :src="htmlUrl"
-            :style="`zoom: ${zoomLevels['html']}; width: 100%; height: 100%; border: none; border-radius: 8px;`"></iframe>
-        </div>
-      </template>
-    </div>
-
-    <!-- 独立看板指令区：用于对当前内容进行局部微调 -->
-    <div class="board-prompt-area" v-if="activeTab === 'mindmap' || cocreationStore.generatedOptions.includes(activeTab)">
-      <a-input-search v-model:value="boardPrompt" placeholder="对当前页面内容的局部修改指令..." enter-button="发送修改"
-        @search="handleBoardPrompt" />
-    </div>
-
-    <div class="render-footer" v-if="cocreationStore.generatedOptions.length > 0">
-      <a-space>
-        <a-button v-if="activeTab !== 'mindmap' && cocreationStore.generatedOptions.includes(activeTab)" @click="downloadSingleMaterial(activeTab)">
-          <DownloadOutlined /> 下载{{ getMaterialName(activeTab) }}
-        </a-button>
-        <a-button @click="downloadMaterial">
-          <DownloadOutlined /> 下载全部内容
-        </a-button>
-      </a-space>
-    </div>
-
-    <!-- Fullscreen Edit Modal -->
-    <a-modal v-model:open="isFullscreenEdit" :title="activeTab === 'doc' ? '教案在线编辑 (模拟)' : 'PPT在线编辑 (模拟)'" width="100%"
-      style="top: 0; padding: 0; margin: 0; max-width: 100vw; height: 100vh;"
-      :bodyStyle="{ height: 'calc(100vh - 108px)', padding: '0', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }"
-      @ok="handleSaveEdit" okText="保存并同步至大屏" cancelText="取消" :destroyOnClose="true">
-      <div class="mock-editor-toolbar">
-        <a-space>
-          <a-button type="text"><strong>B</strong></a-button>
-          <a-button type="text"><i>I</i></a-button>
-          <a-button type="text"><u>U</u></a-button>
-          <a-divider type="vertical" />
-          <a-button type="text">
-            <AlignLeftOutlined />
-          </a-button>
-          <a-button type="text">
-            <AlignCenterOutlined />
-          </a-button>
-          <a-button type="text">
-            <AlignRightOutlined />
-          </a-button>
-        </a-space>
-      </div>
-      <div class="mock-editor-content">
-        <div class="mock-page">
-          <h2>编辑内容</h2>
-          <p>（模拟可编辑区域）</p>
-        </div>
-      </div>
-    </a-modal>
+    <!-- 底部微调指令及下载操作集 -->
+    <RightBoardFooter
+      :activeTab="activeTab"
+      @boardPrompt="handleBoardPrompt"
+      @downloadSingle="downloadSingleMaterial"
+      @downloadAll="downloadMaterial"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+/**
+ * 课件共创页面 - 右侧渲染区域 (CocreationRight) 重构版
+ * 业务逻辑：
+ * 1. 作为容器，协调顶部导航 (RightBoardHeader) 与底部操作 (RightBoardFooter)。
+ * 2. 挂载中间的主体渲染区，包括思维导图页 (RightMindMapBoard) 与资源预览页 (RightPreviewBoard)。
+ * 3. 维护共用的上下文状态（如缩放、全屏变量等）和实例化第三方视图引擎（如 mindmap）。
+ */
 import { ref, reactive, watch, nextTick, onMounted } from 'vue';
 import { message } from 'ant-design-vue';
-import {
-  DownloadOutlined, ZoomInOutlined, ZoomOutOutlined, EditOutlined,
-  AlignLeftOutlined, AlignCenterOutlined, AlignRightOutlined
-} from '@ant-design/icons-vue';
-import VueOfficePptx from '@vue-office/pptx';
-import VueOfficeDocx from '@vue-office/docx';
 import MindMap from 'simple-mind-map';
+
+import RightBoardHeader from './RightBoardHeader.vue';
+import RightMindMapBoard from './RightMindMapBoard.vue';
+import RightPreviewBoard from './RightPreviewBoard.vue';
+import RightBoardFooter from './RightBoardFooter.vue';
+
 import { useCocreationStore } from '../../stores/cocreationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
-/**
- * 状态仓库
- */
-const cocreationStore = useCocreationStore(); // 共创协作仓库：管理思维导图数据、已生成的资产、生成选项等
-const settingsStore = useSettingsStore();     // 全局设置仓库：主要用于响应式切换思维导图的主题（深色/浅色）
+// 状态库
+const cocreationStore = useCocreationStore();
+const settingsStore = useSettingsStore();
 
 /**
- * 【响应式变量】预览切换与资源路径
- * 业务逻辑：根据 `activeTab` 展示不同模态的内容，如课件大纲、PPT、文档等。
+ * 【响应式变量：导航与预览资产地址】
  */
-const activeTab = ref<'mindmap' | 'ppt' | 'doc' | 'video' | 'html'>('mindmap'); // 当前激活的看板页签
+const activeTab = ref<'mindmap' | 'ppt' | 'doc' | 'video' | 'html'>('mindmap');
 const pptUrl = ref('https://docs.google.com/presentation/d/1iIU9QfGpr9F101KvhVCsd9RtpyOQM0KBUIcf1l6W63s/edit?usp=sharing');
 const docUrl = ref('https://image2url.com/r2/default/files/1772455500887-fda7d267-b975-4a9a-abc9-d14489518cd5.docx');
 const videoUrl = ref('https://www.w3schools.com/html/mov_bbb.mp4');
 const htmlUrl = ref('https://bilibili.com');
 
 /**
- * 【响应式变量】缩放级别管理
- * 作用：为每个看板页签独立维护一套缩放比例，增强预览体验
+ * 【响应式变量：UI 与缩放】
  */
 const zoomLevels = reactive<Record<'mindmap' | 'ppt' | 'doc' | 'video' | 'html', number>>({
-  mindmap: 1.0,
-  ppt: 1.0,
-  doc: 1.0,
-  video: 1.0,
-  html: 1.0
+  mindmap: 1.0, ppt: 1.0, doc: 1.0, video: 1.0, html: 1.0
 });
+const isGeneratingMaterials = ref(false);
+const isFullscreenEdit = ref(false);
 
-/**
- * 【UI 交互变量】
- */
-const isGeneratingMaterials = ref(false); // 控制“确认并生成”按钮的 Loading 状态
-const boardPrompt = ref('');               // 顶部看板专用修改指令输入值
-const isFullscreenEdit = ref(false);       // 控制全屏模拟编辑器 Modal 的显隐
+let mindMapInstance: MindMap | null = null;
 
-/**
- * 思维导图实例与交互逻辑 (simple-mind-map)
- */
-let mindMapInstance: MindMap | null = null; // 存储思维导图核心类实例
-
-/**
- * 【函数】zoomIn / zoomOut
- * 作用：调整当前活动看板的缩放比例，并同步触发思维导图的 API 调用
- */
+// 顶部 Toolbar 回调：视图放大
 const zoomIn = () => {
   if (zoomLevels[activeTab.value] < 2.0) {
     zoomLevels[activeTab.value] = parseFloat((zoomLevels[activeTab.value] + 0.1).toFixed(1));
@@ -202,6 +100,7 @@ const zoomIn = () => {
   }
 };
 
+// 顶部 Toolbar 回调：视图缩小
 const zoomOut = () => {
   if (zoomLevels[activeTab.value] > 0.3) {
     zoomLevels[activeTab.value] = parseFloat((zoomLevels[activeTab.value] - 0.1).toFixed(1));
@@ -209,10 +108,7 @@ const zoomOut = () => {
   }
 };
 
-/**
- * 【函数】updateMindMapScale
- * 作用：专门针对思维导图 canvas 进行视图缩放同步
- */
+// 同步 SimpleMindMap 比例
 const updateMindMapScale = () => {
   if (activeTab.value === 'mindmap' && mindMapInstance) {
     // @ts-expect-error ignore simple-mind-map argument typings
@@ -221,13 +117,12 @@ const updateMindMapScale = () => {
 };
 
 /**
- * 【常量】思维导图兜底初始数据
+ * 思维导图生命周期管理
  */
 const DEFAULT_MINDMAP_DATA = {
   data: { text: "课程大纲" },
   children: [
-    { data: { text: "知识点 1" } },
-    { data: { text: "知识点 2" } },
+    { data: { text: "知识点 1" } }, { data: { text: "知识点 2" } },
     { data: { text: "应用" }, children: [{ data: { text: "案例" } }] }
   ]
 };
@@ -240,10 +135,36 @@ const DEFAULT_MINDMAP_DATA = {
 const saveMindMapData = () => {
   if (!mindMapInstance) return;
   try {
-    // @ts-expect-error simple-mind-map typings incomplete
+    // @ts-expect-error typings
     const data = mindMapInstance.getData();
     cocreationStore.mindmapData = data;
   } catch { /* ignore */ }
+};
+
+// 动态获取配套的思维导图主题配置（重点为字体颜色与透明背景适应双主题）
+const getCustomThemeConfig = (isDark: boolean) => {
+  return {
+    backgroundColor: 'transparent',
+    lineColor: isDark ? '#434343' : '#d9d9d9',
+    root: {
+      fillColor: isDark ? '#177ddc' : '#1890ff',
+      color: '#ffffff',
+      borderColor: 'transparent',
+    },
+    second: {
+      fillColor: isDark ? '#141414' : '#ffffff',
+      color: isDark ? '#e5e7eb' : '#333333',
+      borderColor: isDark ? '#434343' : '#d9d9d9',
+    },
+    node: {
+      color: isDark ? '#e5e7eb' : '#333333',
+    },
+    generalization: {
+      fillColor: isDark ? '#141414' : '#ffffff',
+      color: isDark ? '#e5e7eb' : '#333333',
+      borderColor: isDark ? '#434343' : '#d9d9d9',
+    }
+  };
 };
 
 /**
@@ -262,51 +183,49 @@ const initMindMap = () => {
     if (mindMapInstance) mindMapInstance.destroy();
 
     const savedData = cocreationStore.mindmapData;
-
-    // @ts-expect-error simple-mind-map has incomplete typings
+    // @ts-expect-error typings
     mindMapInstance = new MindMap({
       el: container,
       theme: settingsStore.theme === 'dark' ? 'dark' : 'default',
+      themeConfig: getCustomThemeConfig(settingsStore.theme === 'dark'),
       data: savedData ?? DEFAULT_MINDMAP_DATA
     });
-    // @ts-expect-error ignore simple-mind-map argument typings
+    // @ts-expect-error typings
     mindMapInstance.view.setScale(zoomLevels['mindmap']);
 
-    // 监听数据变化并实时保存
+    // 初始渲染时稍微向左偏移，以避开右侧浮窗
+    setTimeout(() => {
+      if (mindMapInstance) {
+        mindMapInstance.view.translateX(-250);
+      }
+    }, 100);
+
     const mm = mindMapInstance as unknown as { on: (ev: string, fn: () => void) => void };
     mm.on('data_change', saveMindMapData);
     mm.on('node_text_edit_end', saveMindMapData);
   });
 };
 
-/**
- * 生命周期与侦听器
- */
 onMounted(() => {
-  if (activeTab.value === 'mindmap') {
-    initMindMap();
-  }
+  if (activeTab.value === 'mindmap') initMindMap();
 });
 
-// 监听标签页切换
 watch(activeTab, (val) => {
-  if (val === 'mindmap') {
-    initMindMap();
-  }
+  if (val === 'mindmap') initMindMap();
 });
 
-// 重置思维导图（当切换课件 ID 时）
 watch(() => cocreationStore.currentCoursewareId, () => {
-  if (activeTab.value === 'mindmap') {
-    initMindMap();
+  if (activeTab.value === 'mindmap') initMindMap();
+});
+
+watch(() => settingsStore.theme, (theme) => {
+  if (mindMapInstance) {
+    mindMapInstance.setTheme(theme === 'dark' ? 'dark' : 'default');
+    mindMapInstance.setThemeConfig(getCustomThemeConfig(theme === 'dark'));
   }
 });
 
-/**
- * 【异步模拟函数】handleConfirmSummary
- * 作用：执行“确认并生成”批量操作
- * 业务逻辑：根据用户在 mindmap 浮窗中勾选的 option，模拟异步生成 PPT、教案等过程。
- */
+// 处理“确认并生成”大纲对应物料的模拟异步方法
 const handleConfirmSummary = () => {
   if (cocreationStore.generateOptions.length === 0) {
     message.warning('请至少选择一项需要生成的内容');
@@ -316,27 +235,22 @@ const handleConfirmSummary = () => {
   message.loading({ content: '正在生成对应的资料...', key: 'gen', duration: 0 });
   setTimeout(() => {
     isGeneratingMaterials.value = false;
-    cocreationStore.materialGenerated = true;
+    cocreationStore.materialGenerated = true; // 解锁预览
     cocreationStore.generatedOptions = [...cocreationStore.generateOptions];
     message.success({ content: '对应部分资料生成成功', key: 'gen', duration: 2 });
   }, 2000);
 };
 
-// 响应全局主题色对思维导图颜色的冲击
-watch(() => settingsStore.theme, (theme) => {
-  if (mindMapInstance) {
-    mindMapInstance.setThemeConfig(theme === 'dark' ? { theme: 'dark' } : {});
-    mindMapInstance.setTheme(theme === 'dark' ? 'dark' : 'default');
-  }
-});
-
-/**
- * 【函数】下载系统
- */
-const downloadMaterial = () => {
-  message.success('开始下载全部资料包...');
+// 独立功能：重新生成当前激活页签的资料内容
+const handleRegenerateCurrent = () => {
+  const tName = activeTab.value === 'mindmap' ? '思维导图大纲' : getMaterialName(activeTab.value);
+  message.loading({ content: `正在重新生成 ${tName} ...`, key: 'regen', duration: 0 });
+  setTimeout(() => {
+    message.success({ content: `${tName} 重新生成成功`, key: 'regen', duration: 2 });
+  }, 1500);
 };
 
+// 工具函数：Tab key 映射可视中文字段
 const getMaterialName = (tab: string) => {
   const map: Record<string, string> = {
     ppt: 'PPT', doc: '教案', video: '视频', html: 'H5'
@@ -344,30 +258,36 @@ const getMaterialName = (tab: string) => {
   return map[tab] || '';
 };
 
+// 交互功能：重置（居中）思维导图视角，并稍微偏左避开右侧浮窗
+const handleResetView = () => {
+  if (mindMapInstance) {
+    mindMapInstance.view.reset();
+    setTimeout(() => {
+      if (mindMapInstance) {
+        mindMapInstance.view.translateX(-150);
+      }
+    }, 300);
+  }
+};
+
+/**
+ * 【回调】底部操作群
+ */
+const downloadMaterial = () => {
+  message.success('开始下载全部资料包...');
+};
 const downloadSingleMaterial = (tab: string) => {
   message.success(`开始下载单项资料：${getMaterialName(tab)}...`);
 };
-
-/**
- * 【函数】handleBoardPrompt
- * 作用：处理针对“右侧看板内特定内容”的微调指令
- */
-const handleBoardPrompt = (value: string) => {
-  if (!value.trim()) return;
-  message.success(`发送局部修改指令：${value}`);
-  boardPrompt.value = '';
+const handleBoardPrompt = (val: string) => {
+  message.success(`发送局部修改指令：${val}`);
 };
 
 /**
- * 【模拟在线编辑】
+ * 【回调】全屏模拟编辑模式
  */
 const openFullscreenEdit = () => {
   isFullscreenEdit.value = true;
-};
-
-const handleSaveEdit = () => {
-  message.success('文档修改已保存并同步');
-  isFullscreenEdit.value = false;
 };
 </script>
 
@@ -379,99 +299,36 @@ const handleSaveEdit = () => {
   height: 100%;
 }
 
-.render-header {
-  padding: 0 24px;
-  background: var(--app-panel);
-  border-bottom: 1px solid var(--app-border);
-}
-
-.render-content {
+.render-viewport {
   flex: 1;
-  padding: 24px;
-  overflow-y: auto;
+  position: relative;
+  overflow: hidden;
   display: flex;
-  justify-content: center;
-  align-items: center;
 }
 
-.skeleton-wrapper {
+.tab-page {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  max-width: 800px;
-  background: var(--app-panel);
-  padding: 32px;
-  border-radius: 12px;
-  box-shadow: var(--app-shadow);
-  display: flex;
-  justify-content: center;
-}
-
-.ppt-placeholder {
-  width: 100%;
-  aspect-ratio: 16/9;
-  background: var(--app-bg);
-  border: 2px dashed var(--app-border);
-  border-radius: 8px;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--app-text-sub);
 }
 
-.board-prompt-area {
-  padding: 12px 24px;
-  background: var(--app-panel);
-  border-top: 1px solid var(--app-border);
+/* 页面切换动画 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-.render-footer {
-  padding: 16px 24px;
-  background: var(--app-panel);
-  border-top: 1px solid var(--app-border);
-  text-align: right;
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
 }
 
-.mock-editor-toolbar {
-  background: var(--app-panel);
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--app-border);
-  box-shadow: var(--app-shadow);
-  z-index: 10;
-}
-
-.mock-editor-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 32px;
-  display: flex;
-  justify-content: center;
-}
-
-.mock-page {
-  background: var(--app-panel);
-  width: 21cm;
-  min-height: 29.7cm;
-  box-shadow: var(--app-shadow);
-  padding: 96px;
-  border-radius: 4px;
-  outline: none;
-}
-
-.generation-options-floating {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 10;
-  width: 250px;
-}
-
-.generation-card {
-  border-color: var(--color-primary);
-  box-shadow: var(--shadow-sm);
-}
-
-.dark-theme .generation-card {
-  background-color: var(--app-panel);
-  border-color: var(--app-border);
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>

@@ -61,7 +61,7 @@ export function apiUpdateProfile(data: Partial<User>): CommonResponseData<User> 
  * @param password - 新密码
  * @returns 空数据响应
  */
-export function apiUpdatePassword(password: string): CommonResponseData<null> {
+export function apiUpdatePassword(_password: string): CommonResponseData<null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return Promise.resolve({ data: { code: 200, message: 'success', data: null }, status: 200, statusText: 'OK', headers: {}, config: {} as InternalAxiosRequestConfig<any> })
 }
