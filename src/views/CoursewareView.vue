@@ -125,7 +125,20 @@
           </a-form-item>
           <a-form-item label="适用年级" required>
             <a-select v-model:value="formState.grade" placeholder="请选择年级">
-      <script setup lang="ts">
+                            <a-select-option value="一年级">一年级</a-select-option>
+              <a-select-option value="二年级">二年级</a-select-option>
+              <a-select-option value="三年级">三年级</a-select-option>
+              <a-select-option value="四年级">四年级</a-select-option>
+              <a-select-option value="五年级">五年级</a-select-option>
+              <a-select-option value="六年级">六年级</a-select-option>
+            </a-select>
+          </a-form-item>
+        </a-form>
+      </a-modal>
+    </div>
+  </a-spin>
+</template>
+<script setup lang="ts">
 import { ref, computed, onMounted, createVNode } from 'vue';
 import { message, Modal } from 'ant-design-vue';
 import { useRouter } from 'vue-router';
@@ -179,19 +192,19 @@ onMounted(() => {
  */
 const filteredCoursewares = computed(() => {
   let list = coursewareStore.coursewares;
-  
+
   // 1. 科目路由过滤
   if (filterSubject.value !== 'all') {
     list = list.filter(c => c.subject === filterSubject.value);
   }
-  
+
   // 2. 标题模糊搜索匹配
   if (searchKeyword.value) {
     list = list.filter(c => c.title.toLowerCase().includes(searchKeyword.value.toLowerCase()));
   }
-  
+
   const result = [...list];
-  
+
   // 3. 多维排序执行
   if (sortOrder.value === 'name') {
     result.sort((a, b) => a.title.localeCompare(b.title));
@@ -334,75 +347,6 @@ const createNewCourse = async () => {
     const newCw = await coursewareStore.createCourseware(formState.value);
     newCourseModalVisible.value = false;
     // 重定向至 AI 共创空间进行详细设计
-    router.push(`/cocreation?id=${newCw.id}`);
-  } finally {
-    creatingCourse.value = false;
-  }
-};
-</script>�删除操作（移入回收站）
- * @param id 欲删除的课件 ID
- * 业务逻辑：弹出二次确认框，防止用户误触删除
- */
-const handleDeleteCourseware = (id: string) => {
-  Modal.confirm({
-    title: '确定要删除这个课件吗？',
-    icon: createVNode(ExclamationCircleOutlined),
-    content: '删除后无法恢复，请谨慎操作。',
-    okText: '确定删除',
-    okType: 'danger',
-    cancelText: '取消',
-    async onOk() {
-      await coursewareStore.deleteCourseware(id);
-      message.success('已移至回收站');
-    },
-  });
-};
-
-/**
- * 【新建课件相关状态】
- */
-const newCourseModalVisible = ref(false); // 控制“新建课件”弹窗
-const creatingCourse = ref(false);        // 新建过程中的提交按钮加载状态
-const formState = ref({                   // 新建课件表单的双向绑定对象
-  title: '',     // 课件标题
-  subject: undefined, // 适用科目
-  grade: undefined    // 适用年级
-});
-
-/**
- * 【函数】openNewCourseModal
- * 作用：重置表单并打开新建弹窗
- */
-const openNewCourseModal = () => {
-  formState.value = { title: '', subject: undefined, grade: undefined };
-  newCourseModalVisible.value = true;
-};
-
-/**
- * 【函数】closeNewCourseModal
- * 作用：关闭新建弹窗
- */
-const closeNewCourseModal = () => {
-  newCourseModalVisible.value = false;
-};
-
-/**
- * 【函数】createNewCourse
- * 作用：执行新建课件的最终提交
- * 业务逻辑：
- * 1. 验证必填项。
- * 2. 调用 store 创建新课件（模拟 API）。
- * 3. 成功后自动跳转到该课件的协同创作页面。
- */
-const createNewCourse = async () => {
-  if (!formState.value.title || !formState.value.subject || !formState.value.grade) {
-    message.warning('名称、科目和年级为必填项');
-    return;
-  }
-  creatingCourse.value = true;
-  try {
-    const newCw = await coursewareStore.createCourseware(formState.value);
-    newCourseModalVisible.value = false;
     router.push(`/cocreation?id=${newCw.id}`);
   } finally {
     creatingCourse.value = false;
