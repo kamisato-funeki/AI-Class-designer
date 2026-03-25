@@ -492,7 +492,6 @@ const openStudentDetails = (student: StudentInfo) => {
   display: flex;
   flex-direction: column;
   margin-top: -20px;
-  /* 位置微上调 */
 }
 
 .detail-card {
@@ -526,10 +525,9 @@ const openStudentDetails = (student: StudentInfo) => {
   margin-top: 16px;
 }
 
-/* We force the router view container to scroll */
 .tab-content {
   flex: 1;
   overflow-y: auto;
-  padding-top: 16px;
+  padding-top: 0px;
 }
 </style>

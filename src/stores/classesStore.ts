@@ -159,9 +159,50 @@ export const useClassesStore = defineStore('classes', () => {
         classSchedules.value[classId] = res.data.data
       } catch {
         classSchedules.value[classId] = [
-          { id: 's1', classId, day: '周一', timeStr: '08:00 - 08:45', subject: '语文', teacher: '张老师' },
-          { id: 's2', classId, day: '周一', timeStr: '09:00 - 09:45', subject: '数学', teacher: '李老师' },
-          { id: 's3', classId, day: '周二', timeStr: '10:00 - 10:45', subject: '英语', teacher: '王老师' },
+          // 周一
+          { id: 's1', classId, day: '周一', dayOfWeek: 1, period: 1, length: 1, timeStr: '08:00 - 08:45', subject: '语文', teacher: '李老师', room: '高三1班' },
+          { id: 's2', classId, day: '周一', dayOfWeek: 1, period: 2, length: 1, timeStr: '08:55 - 09:40', subject: '数学', teacher: '张老师', room: '高三1班' },
+          { id: 's3', classId, day: '周一', dayOfWeek: 1, period: 3, length: 1, timeStr: '10:00 - 10:45', subject: '英语', teacher: '王老师', room: '高三1班' },
+          { id: 's4', classId, day: '周一', dayOfWeek: 1, period: 4, length: 1, timeStr: '10:55 - 11:40', subject: '物理', teacher: '赵老师', room: '高三1班' },
+          { id: 's5', classId, day: '周一', dayOfWeek: 1, period: 5, length: 1, timeStr: '14:00 - 14:45', subject: '化学', teacher: '陈老师', room: '高三1班' },
+          { id: 's6', classId, day: '周一', dayOfWeek: 1, period: 6, length: 1, timeStr: '14:55 - 15:40', subject: '生物', teacher: '林老师', room: '高三1班' },
+          { id: 's7', classId, day: '周一', dayOfWeek: 1, period: 7, length: 1, timeStr: '16:00 - 16:45', subject: '体育', teacher: '徐老师', room: '操场' },
+          { id: 's8', classId, day: '周一', dayOfWeek: 1, period: 9, length: 2, timeStr: '18:30 - 20:10', subject: '数学晚辅', teacher: '张老师', room: '高三1班' },
+          // 周二
+          { id: 's9', classId, day: '周二', dayOfWeek: 2, period: 1, length: 2, timeStr: '08:00 - 09:40', subject: '数学', teacher: '张老师', room: '高三1班' },
+          { id: 's10', classId, day: '周二', dayOfWeek: 2, period: 3, length: 1, timeStr: '10:00 - 10:45', subject: '英语', teacher: '王老师', room: '高三1班' },
+          { id: 's11', classId, day: '周二', dayOfWeek: 2, period: 4, length: 1, timeStr: '10:55 - 11:40', subject: '物理', teacher: '赵老师', room: '高三1班' },
+          { id: 's12', classId, day: '周二', dayOfWeek: 2, period: 5, length: 1, timeStr: '14:00 - 14:45', subject: '化学', teacher: '陈老师', room: '高三1班' },
+          { id: 's13', classId, day: '周二', dayOfWeek: 2, period: 6, length: 1, timeStr: '14:55 - 15:40', subject: '语文', teacher: '李老师', room: '高三1班' },
+          { id: 's14', classId, day: '周二', dayOfWeek: 2, period: 7, length: 1, timeStr: '16:00 - 16:45', subject: '生物', teacher: '林老师', room: '高三1班' },
+          { id: 's15', classId, day: '周二', dayOfWeek: 2, period: 8, length: 1, timeStr: '16:55 - 17:40', subject: '班会', teacher: '张老师', room: '高三1班' },
+          { id: 's16', classId, day: '周二', dayOfWeek: 2, period: 9, length: 2, timeStr: '18:30 - 20:10', subject: '理综晚辅', teacher: '赵老师', room: '高三1班' },
+          // 周三
+          { id: 's17', classId, day: '周三', dayOfWeek: 3, period: 1, length: 1, timeStr: '08:00 - 08:45', subject: '英语', teacher: '王老师', room: '高三1班' },
+          { id: 's18', classId, day: '周三', dayOfWeek: 3, period: 2, length: 1, timeStr: '08:55 - 09:40', subject: '语文', teacher: '李老师', room: '高三1班' },
+          { id: 's19', classId, day: '周三', dayOfWeek: 3, period: 3, length: 2, timeStr: '10:00 - 11:40', subject: '数学', teacher: '张老师', room: '高三1班' },
+          { id: 's20', classId, day: '周三', dayOfWeek: 3, period: 5, length: 1, timeStr: '14:00 - 14:45', subject: '物理', teacher: '赵老师', room: '高三1班' },
+          { id: 's21', classId, day: '周三', dayOfWeek: 3, period: 6, length: 1, timeStr: '14:55 - 15:40', subject: '体育', teacher: '徐老师', room: '操场' },
+          { id: 's22', classId, day: '周三', dayOfWeek: 3, period: 7, length: 1, timeStr: '16:00 - 16:45', subject: '化学', teacher: '陈老师', room: '高三1班' },
+          { id: 's23', classId, day: '周三', dayOfWeek: 3, period: 9, length: 2, timeStr: '18:30 - 20:10', subject: '英语晚辅', teacher: '王老师', room: '高三1班' },
+          // 周四
+          { id: 's24', classId, day: '周四', dayOfWeek: 4, period: 1, length: 1, timeStr: '08:00 - 08:45', subject: '物理', teacher: '赵老师', room: '高三1班' },
+          { id: 's25', classId, day: '周四', dayOfWeek: 4, period: 2, length: 1, timeStr: '08:55 - 09:40', subject: '化学', teacher: '陈老师', room: '高三1班' },
+          { id: 's26', classId, day: '周四', dayOfWeek: 4, period: 3, length: 1, timeStr: '10:00 - 10:45', subject: '英语', teacher: '王老师', room: '高三1班' },
+          { id: 's27', classId, day: '周四', dayOfWeek: 4, period: 4, length: 1, timeStr: '10:55 - 11:40', subject: '数学', teacher: '张老师', room: '高三1班' },
+          { id: 's28', classId, day: '周四', dayOfWeek: 4, period: 5, length: 1, timeStr: '14:00 - 14:45', subject: '语文', teacher: '李老师', room: '高三1班' },
+          { id: 's29', classId, day: '周四', dayOfWeek: 4, period: 6, length: 1, timeStr: '14:55 - 15:40', subject: '生物', teacher: '林老师', room: '高三1班' },
+          { id: 's30', classId, day: '周四', dayOfWeek: 4, period: 7, length: 1, timeStr: '16:00 - 16:45', subject: '音乐', teacher: '孙老师', room: '音乐室' },
+          { id: 's31', classId, day: '周四', dayOfWeek: 4, period: 9, length: 2, timeStr: '18:30 - 20:10', subject: '数学晚辅', teacher: '张老师', room: '高三1班' },
+          // 周五
+          { id: 's32', classId, day: '周五', dayOfWeek: 5, period: 1, length: 1, timeStr: '08:00 - 08:45', subject: '英语', teacher: '王老师', room: '高三1班' },
+          { id: 's33', classId, day: '周五', dayOfWeek: 5, period: 2, length: 1, timeStr: '08:55 - 09:40', subject: '数学', teacher: '张老师', room: '高三1班' },
+          { id: 's34', classId, day: '周五', dayOfWeek: 5, period: 3, length: 1, timeStr: '10:00 - 10:45', subject: '语文', teacher: '李老师', room: '高三1班' },
+          { id: 's35', classId, day: '周五', dayOfWeek: 5, period: 4, length: 1, timeStr: '10:55 - 11:40', subject: '物理', teacher: '赵老师', room: '高三1班' },
+          { id: 's36', classId, day: '周五', dayOfWeek: 5, period: 5, length: 1, timeStr: '14:00 - 14:45', subject: '化学', teacher: '陈老师', room: '高三1班' },
+          { id: 's37', classId, day: '周五', dayOfWeek: 5, period: 6, length: 1, timeStr: '14:55 - 15:40', subject: '生物', teacher: '林老师', room: '高三1班' },
+          { id: 's38', classId, day: '周五', dayOfWeek: 5, period: 7, length: 1, timeStr: '16:00 - 16:45', subject: '美术', teacher: '周老师', room: '美术室' },
+          { id: 's39', classId, day: '周五', dayOfWeek: 5, period: 9, length: 2, timeStr: '18:30 - 20:10', subject: '语文晚辅', teacher: '李老师', room: '高三1班' },
         ]
       }
 

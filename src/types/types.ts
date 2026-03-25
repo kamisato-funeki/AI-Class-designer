@@ -239,12 +239,16 @@ export interface StudentMessage {
 
 /**
  * 课程表条目
- * @property id      - 条目唯一标识
- * @property classId - 所属班级 ID
- * @property day     - 星期几
- * @property timeStr - 上课时间段字符串
- * @property subject - 课程学科
- * @property teacher - 授课教师
+ * @property id        - 条目唯一标识
+ * @property classId   - 所属班级 ID
+ * @property day       - 星期几
+ * @property timeStr   - 上课时间段字符串
+ * @property subject   - 课程学科
+ * @property teacher   - 授课教师
+ * @property room      - 授课教室（可选）
+ * @property dayOfWeek - 星期几数字：1-7（可选）
+ * @property period    - 起始上课节次：1-11（可选）
+ * @property length    - 连续上多少节课（可选，默认 1）
  */
 export interface CourseScheduleItem {
   id: string
@@ -253,6 +257,10 @@ export interface CourseScheduleItem {
   timeStr: string
   subject: string
   teacher: string
+  room?: string
+  dayOfWeek?: number
+  period?: number
+  length?: number
 }
 
 // ==================== AI 共创对话相关 ====================
