@@ -21,6 +21,7 @@ import type {
   StudentMessage,
   GroupChat,
   GroupMessage,
+  HomeworkInfo,
 } from '../types/types'
 
 // ==================== 班级基础操作 ====================
@@ -60,6 +61,73 @@ export function apiGetClassTasks(classId: string): CommonResponseData<ClassTask[
  */
 export function apiCreateClassTask(data: Partial<ClassTask>): CommonResponseData<ClassTask> {
   return defaultAxios.post(`/classes/${data.classId}/tasks`, data)
+}
+
+// ==================== 班级作业操作 ====================
+
+/**
+ * 获取指定班级的作业列表
+ * @param classId - 班级 ID
+ * @returns 班级作业数组
+ */
+export function apiGetClassHomeworks(classId: string): CommonResponseData<HomeworkInfo[]> {
+  return defaultAxios.get(`/classes/${classId}/homeworks`)
+}
+
+/**
+ * 为指定班级发布新作业
+ * @param data - 作业数据
+ * @returns 创建成功的作业信息
+ */
+export function apiCreateClassHomework(data: Partial<HomeworkInfo>): CommonResponseData<HomeworkInfo> {
+  return defaultAxios.post(`/classes/${data.classId}/homeworks`, data)
+}
+
+/**
+ * 更新班级作业
+ * @param id - 作业 ID
+ * @param data - 更新的作业数据
+ */
+export function apiUpdateClassHomework(id: string, data: Partial<HomeworkInfo>): CommonResponseData<HomeworkInfo> {
+  return defaultAxios.put(`/homeworks/${id}`, data)
+}
+
+/**
+ * 删除班级作业
+ * @param id - 作业 ID
+ */
+export function apiDeleteClassHomework(id: string): CommonResponseData<void> {
+  return defaultAxios.delete(`/homeworks/${id}`)
+}
+
+/**
+ * 下载作业附件
+ * @param url - 附件地址
+ * @param name - 附件名称
+ * @returns Blob文件流 (在真实场景中返回二进制)
+ */
+export function apiDownloadHomeworkAttachment(url: string, name?: string): Promise<Blob> {
+  // 此处模拟文件下载请求，实际场景一般是设定 responseType: 'blob'
+  return defaultAxios.get(url, { responseType: 'blob', params: { name } })
+}
+
+/**
+ * 获取具体学生的作业提交详情
+ * @param homeworkId - 作业 ID
+ * @param studentId - 学生 ID
+ */
+export function apiGetStudentHomeworkDetail(homeworkId: string, studentId: string): CommonResponseData<unknown> {
+  return defaultAxios.get(`/homeworks/${homeworkId}/students/${studentId}`)
+}
+
+/**
+ * 更新学生作业的评分和评语
+ * @param homeworkId - 作业 ID
+ * @param studentId - 学生 ID
+ * @param data - 更新的数据包括分数和评议
+ */
+export function apiUpdateStudentHomeworkEvaluation(homeworkId: string, studentId: string, data: { grade: number; evaluation: string }): Promise<unknown> {
+  return defaultAxios.put(`/homeworks/${homeworkId}/students/${studentId}/evaluation`, data)
 }
 
 // ==================== 班级学生操作 ====================

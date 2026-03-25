@@ -475,6 +475,18 @@ const createNewCourse = async () => {
   color: white !important;
 }
 
+/* Fix for badge dot clipping in collapsed sidebar */
+:deep(.ant-menu-inline-collapsed .ant-menu-item),
+:deep(.ant-menu-vertical .ant-menu-item),
+:deep(.ant-menu-vertical-left .ant-menu-item),
+:deep(.ant-menu-vertical-right .ant-menu-item) {
+  overflow: visible !important;
+}
+
+:deep(.ant-menu-item .ant-menu-item-icon) {
+  overflow: visible !important;
+}
+
 .mobile-sider {
   position: absolute !important;
   height: 100vh;

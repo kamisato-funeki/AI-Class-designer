@@ -8,6 +8,7 @@ import type {
   StudentMessage,
   GroupChat,
   GroupMessage,
+  HomeworkInfo,
 } from '../types/types'
 import {
   apiGetClasses,
@@ -21,6 +22,11 @@ import {
   apiGetGroupChats,
   apiGetGroupMessages,
   apiSendGroupMessage,
+  apiGetClassHomeworks,
+  apiCreateClassHomework,
+  apiUpdateClassHomework,
+  apiDeleteClassHomework,
+  apiUpdateStudentHomeworkEvaluation,
 } from '../api/class'
 import { v4 as uuidv4 } from 'uuid'
 import dayjs from 'dayjs'
@@ -41,6 +47,7 @@ export const useClassesStore = defineStore('classes', () => {
   const currentClass = ref<ClassInfo | null>(null)   // 当前正在视口中交互的班级上下文对象
 
   const classTasks = ref<Record<string, ClassTask[]>>({})            // 任务缓存映射表：按 ClassId 归档作业、讨论等
+  const classHomeworks = ref<Record<string, HomeworkInfo[]>>({})     // 作业缓存映射表：按 ClassId 归档扩展版班级作业
   const classStudents = ref<Record<string, StudentInfo[]>>({})       // 学员名册映射表：存储每个班级的学生画像
   const classSchedules = ref<Record<string, CourseScheduleItem[]>>({}) // 课表排行映射表：存储班级的课程时间线
   const classStudentMessages = ref<Record<string, StudentMessage[]>>({}) // 私聊历史映射表：维护教师与学生间的 1对1 记录
@@ -53,6 +60,7 @@ export const useClassesStore = defineStore('classes', () => {
   // 根据 currentClass 的变化，自动切片并暴露给 UI 层直接使用的子集数据
   const currentTasks = computed(() => currentClass.value ? classTasks.value[currentClass.value.id] || [] : [])
   const students = computed(() => currentClass.value ? classStudents.value[currentClass.value.id] || [] : [])
+  const currentHomeworks = computed(() => currentClass.value ? classHomeworks.value[currentClass.value.id] || [] : [])
   const currentSchedule = computed(() => currentClass.value ? classSchedules.value[currentClass.value.id] || [] : [])
   const groupChats = computed(() => currentClass.value ? classGroupChats.value[currentClass.value.id] || [] : [])
   const currentGroupMessages = computed(() => activeGroupChat.value ? chatMessages.value[activeGroupChat.value.id] || [] : [])
@@ -110,8 +118,9 @@ export const useClassesStore = defineStore('classes', () => {
     const found = classes.value.find((c) => c.id === classId)
     if (found) {
       currentClass.value = found
-      // A. 同步加载班级任务
+      // A. 同步加载班级任务及作业
       await loadTasks(classId)
+      await loadHomeworks(classId)
 
       // B. 加载动态生成的小组学生名单 (Mock 算法：生成 45 名具有随机成绩分布的虚拟学生)
       try {
@@ -178,6 +187,58 @@ export const useClassesStore = defineStore('classes', () => {
   }
 
   /**
+   * 【异步指令】loadHomeworks
+   * 作用：拉取班级内的所有作业，包含详情
+   */
+  const loadHomeworks = async (classId: string) => {
+    try {
+      const res = await apiGetClassHomeworks(classId)
+      classHomeworks.value[classId] = res.data.data
+    } catch {
+      // 提供丰富的 Mock 作业数据，扩展至 20 条
+      const mocks: HomeworkInfo[] = [];
+      const baseDate = dayjs();
+      
+      for (let i = 0; i < 20; i++) {
+        const createTime = baseDate.subtract(i * 2, 'day').format('YYYY-MM-DD HH:mm:ss');
+        const dueDate = baseDate.subtract(i * 2 - 3, 'day').format('YYYY-MM-DD HH:mm:ss');
+        const completed = Math.floor(Math.random() * 20) + 25; // 25 to 44
+        const total = 45;
+        
+        // 模拟学生提交详情
+        const studentStats = Array.from({ length: 8 }).map((_, j) => {
+          const names = ['李华', '张三', '王五', '赵六', '陈七', '林八', '刘九', '孙十'];
+          const isExcellent = Math.random() > 0.5;
+          const hasAttachment = Math.random() > 0.5;
+          return {
+            studentId: `stu_hw_${i}_${j}`,
+            name: names[j] || '学生',
+            grade: isExcellent ? Math.floor(Math.random() * 10) + 90 : Math.floor(Math.random() * 20) + 70,
+            avatar: `https://api.dicebear.com/7.x/miniavs/svg?seed=hw_${i}_${j}`,
+            submittedContent: `【${names[j]}的作业提交】\n本次作业我认真复习了课堂所学知识。第1题的答案是A，第2题我使用了新学的公式进行推导...`,
+            attachments: hasAttachment ? [{ name: `${names[j]}的附加证明文件.pdf`, url: `blob:mock-student-${i}-${j}.pdf` }] : undefined,
+            evaluation: isExcellent ? '做得非常好！思路清晰，计算准确，继续保持。' : '基础掌握得不错，但是部分细节还需要再检查一下，注意书写规范。'
+          };
+        });
+
+        mocks.push({
+          id: `hw_mock_${i}`,
+          classId,
+          title: i === 0 ? '最新随堂练习及作业' : `第 ${20 - i} 次课后作业任务`,
+          description: `这是第 ${20 - i} 次作业的详细描述。请同学们仔细阅读相关材料，按时完成。注意：不仅要写出结果，还要有详细的推导过程。`,
+          attachments: i % 3 === 0 ? [{ name: `参考资料_${i}.pdf`, url: `blob:mock-url-${i}.pdf` }] : [{ name: `阅读材料_${i}.docx`, url: `blob:mock-url-read-${i}.docx` }, { name: '模板.xlsx', url: `blob:mock-template.xlsx` }],
+          dueDate,
+          createTime,
+          completedCount: completed,
+          totalCount: total,
+          studentStats,
+        });
+      }
+      classHomeworks.value[classId] = mocks;
+    }
+  }
+
+  /**
    * 【异步指令】createClass
    * 作用：执行新班级的入库持久化
    * @param data 班级表单信息 (Partial)
@@ -229,6 +290,96 @@ export const useClassesStore = defineStore('classes', () => {
       if (!classTasks.value[classId]) classTasks.value[classId] = []
       classTasks.value[classId].push(task)
       return task
+    }
+  }
+
+  /**
+   * 【异步指令】createHomework
+   * 作用：发布班级作业
+   */
+  const createHomework = async (data: Partial<HomeworkInfo>) => {
+    const classId = data.classId || currentClass.value?.id || 'c1'
+    try {
+      const res = await apiCreateClassHomework(data)
+      if (!classHomeworks.value[classId]) classHomeworks.value[classId] = []
+      classHomeworks.value[classId].unshift(res.data.data)
+      return res.data.data
+    } catch {
+      const hw: HomeworkInfo = {
+        id: uuidv4(),
+        classId,
+        title: data.title || '新作业',
+        description: data.description || '',
+        attachments: data.attachments || [],
+        dueDate: data.dueDate || '',
+        createTime: now(),
+        completedCount: 0,
+        totalCount: currentClass.value?.studentCount || 45,
+        studentStats: []
+      }
+      if (!classHomeworks.value[classId]) classHomeworks.value[classId] = []
+      classHomeworks.value[classId].unshift(hw)
+      return hw
+    }
+  }
+
+  /**
+   * 【异步指令】updateHomework
+   * 作用：修改现有班级作业
+   */
+  const updateHomework = async (id: string, data: Partial<HomeworkInfo>) => {
+    const classId = data.classId || currentClass.value?.id || 'c1'
+    try {
+      const res = await apiUpdateClassHomework(id, data)
+      if (classHomeworks.value[classId]) {
+        const idx = classHomeworks.value[classId].findIndex(h => h.id === id)
+        if (idx !== -1) classHomeworks.value[classId][idx] = { ...classHomeworks.value[classId][idx], ...res.data.data } as HomeworkInfo
+      }
+    } catch {
+      if (classHomeworks.value[classId]) {
+        const idx = classHomeworks.value[classId].findIndex(h => h.id === id)
+        if (idx !== -1) classHomeworks.value[classId][idx] = { ...classHomeworks.value[classId][idx], ...data } as HomeworkInfo
+      }
+    }
+  }
+
+  /**
+   * 【异步指令】deleteHomework
+   * 作用：删除现有班级作业
+   */
+  const deleteHomework = async (classId: string, id: string) => {
+    try {
+      await apiDeleteClassHomework(id)
+      if (classHomeworks.value[classId]) {
+        classHomeworks.value[classId] = classHomeworks.value[classId].filter(h => h.id !== id)
+      }
+    } catch {
+      if (classHomeworks.value[classId]) {
+        classHomeworks.value[classId] = classHomeworks.value[classId].filter(h => h.id !== id)
+      }
+    }
+  }
+
+  /**
+   * 【异步指令】updateStudentEvaluation
+   * 作用：修改学生个人的作业完成评价及分数
+   */
+  const updateStudentEvaluation = async (classId: string, homeworkId: string, studentId: string, payload: { grade: number; evaluation: string }) => {
+    try {
+      await apiUpdateStudentHomeworkEvaluation(homeworkId, studentId, payload)
+    } catch {
+      console.warn('Update student evaluation fell back to mock due to missing API.')
+    }
+    const hwList = classHomeworks.value[classId]
+    if (hwList) {
+      const hw = hwList.find(h => h.id === homeworkId)
+      if (hw) {
+        const student = hw.studentStats.find(s => s.studentId === studentId)
+        if (student) {
+          student.grade = payload.grade
+          student.evaluation = payload.evaluation
+        }
+      }
     }
   }
 
@@ -395,11 +546,13 @@ export const useClassesStore = defineStore('classes', () => {
     classes,
     currentClass,
     classTasks,
+    classHomeworks,
     classStudents,
     classSchedules,
     classGroupChats,
     chatMessages,
     currentTasks,
+    currentHomeworks,
     students,
     currentSchedule,
     groupChats,
@@ -409,8 +562,13 @@ export const useClassesStore = defineStore('classes', () => {
     loadClasses,
     selectClass,
     loadTasks,
+    loadHomeworks,
     createClass,
     createTask,
+    createHomework,
+    updateHomework,
+    deleteHomework,
+    updateStudentEvaluation,
     loadGroupChats,
     selectGroupChat,
     sendGroupMessage,

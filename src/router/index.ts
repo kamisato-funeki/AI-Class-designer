@@ -89,6 +89,12 @@ const router = createRouter({
               component: () => import('../views/classesComp/ClassSchedule.vue'),
             },
             {
+              // 班级作业
+              path: ':classId/homework',
+              name: 'class-homework',
+              component: () => import('../views/classesComp/ClassHomework.vue'),
+            },
+            {
               // 班级动态
               path: ':classId/dynamics',
               name: 'class-dynamics',
