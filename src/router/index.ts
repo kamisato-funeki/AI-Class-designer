@@ -23,12 +23,16 @@
  *   防止在无课件上下文时进入 AI 共创页面。
  */
 
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import CoreLayout from '../layouts/CoreLayout.vue'
 
+const isElectron = navigator.userAgent.toLowerCase().includes('electron')
+
 const router = createRouter({
-  // 使用 HTML5 History 模式，基础路径由环境变量决定
-  history: createWebHistory(import.meta.env.BASE_URL),
+  // 若环境为 Electron，则使用 Hash 模式以支持 file:// 协议，否则保留 History 模式
+  history: isElectron 
+    ? createWebHashHistory(import.meta.env.BASE_URL)
+    : createWebHistory(import.meta.env.BASE_URL),
   routes: [
     // ==================== 独立页面 ====================
     {
