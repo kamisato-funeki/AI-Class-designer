@@ -16,34 +16,41 @@
 -->
 <template>
   <div class="login-container">
+    <!-- 动态背景：仿照 01.html 的效果 -->
+    <div class="background-animation">
+      <ul class="square">
+        <li></li><li></li><li></li><li></li><li></li>
+      </ul>
+      <ul class="circle">
+        <li></li><li></li><li></li><li></li><li></li>
+      </ul>
+    </div>
+
+    <!-- 左上角悬浮操作区（回到主页 & 切换明暗色系） -->
+    <div class="floating-actions">
+      <!-- 跳转回主页，暂时置空链接 -->
+      <a-button shape="circle" size="large" class="float-btn" href="#" title="回到主页">
+        <template #icon><HomeOutlined /></template>
+      </a-button>
+      <!-- 切换明暗配色按钮 -->
+      <a-button shape="circle" size="large" class="float-btn" @click="toggleTheme" title="切换明暗配色">
+        <template #icon><BulbOutlined /></template>
+      </a-button>
+    </div>
+
     <div class="shell">
 
       <!-- =====================================================
            注册表单侧（a-container）
            默认在右侧，z-index:100（前景）
            ===================================================== -->
-      <div class="container a-container" :class="{ 'is-txl': isLogin }" id="a-container">
+      <div class="container a-container" :class="{ 'is-txl': isLogin }" :style="{ opacity: isLogin ? 0 : 1, visibility: isLogin ? 'hidden' : 'visible' }" id="a-container">
         <div class="form">
           <!-- 注册表单标题 -->
           <h2 class="form-title">创建账号</h2>
 
-          <!-- 快捷登录图标区 -->
-          <div class="form-icons">
-            <!-- 电话图标：切换至手机验证码注册 -->
-            <button
-              class="icon-btn"
-              :class="{ active: activeKey === 'phone' }"
-              title="手机验证码注册"
-              @click="activeKey = activeKey === 'phone' ? 'account' : 'phone'"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.77 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.28-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-              </svg>
-            </button>
-          </div>
 
-          <!-- 副文案 -->
-          <span class="form-span">选择注册方式或电子邮箱注册</span>
+
 
           <!-- 账号密码/手机验证码注册表单 -->
           <div class="forms-wrapper">
@@ -57,11 +64,18 @@
                 class="auth-form"
                 layout="vertical"
               >
+                <!-- 输入框：账号输入 -->
                 <a-form-item name="username">
-                  <a-input v-model:value="formState.username" placeholder="账号" class="form-input" />
+                  <a-input v-model:value="formState.username" placeholder="请输入账号" class="form-input" >
+                    <!-- 对应的输入内容说明 -->
+                    <template #prefix><span class="input-prefix">账号：</span></template>
+                  </a-input>
                 </a-form-item>
+                <!-- 输入框：密码输入 -->
                 <a-form-item name="password">
-                  <a-input-password v-model:value="formState.password" placeholder="密码" class="form-input" />
+                  <a-input-password v-model:value="formState.password" placeholder="请输入密码" class="form-input" >
+                    <template #prefix><span class="input-prefix">密码：</span></template>
+                  </a-input-password>
                 </a-form-item>
               </a-form>
               <a-form
@@ -74,11 +88,15 @@
                 layout="vertical"
               >
                 <a-form-item name="phone">
-                  <a-input v-model:value="formState.phone" placeholder="手机号" class="form-input" />
+                  <a-input v-model:value="formState.phone" placeholder="请输入手机号" class="form-input">
+                    <template #prefix><span class="input-prefix">手机号：</span></template>
+                  </a-input>
                 </a-form-item>
                 <a-form-item name="code">
                   <div class="code-row">
-                    <a-input v-model:value="formState.code" placeholder="验证码" class="form-input code-input" />
+                    <a-input v-model:value="formState.code" placeholder="请输入验证码" class="form-input code-input">
+                      <template #prefix><span class="input-prefix">验证码：</span></template>
+                    </a-input>
                     <button
                       class="code-btn"
                       :class="{ 'code-btn--disabled': countdown > 0 }"
@@ -92,6 +110,23 @@
                 </a-form-item>
               </a-form>
             </Transition>
+          </div>
+
+          <!-- 副文案 -->
+          <span class="form-span">选择注册方式或电子邮箱注册</span>
+
+          <!-- 使用 Ant-Design 风格的图标组件控制登录方式的切换，放置于输入框下方 -->
+          <div class="method-switcher">
+            <a-tooltip placement="bottom" title="账号密码登录">
+              <a-button type="text" :class="{ 'method-active': activeKey === 'account' }" @click="activeKey = 'account'">
+                <template #icon><UserOutlined /></template>
+              </a-button>
+            </a-tooltip>
+            <a-tooltip placement="bottom" title="手机验证码登录">
+              <a-button type="text" :class="{ 'method-active': activeKey === 'phone' }" @click="activeKey = 'phone'">
+                <template #icon><MobileOutlined /></template>
+              </a-button>
+            </a-tooltip>
           </div>
 
           <!-- 注册提交按钮 -->
@@ -109,28 +144,13 @@
            登录表单侧（b-container）
            默认在右侧，z-index:0（背景）
            ===================================================== -->
-      <div class="container b-container" :class="{ 'is-txl': isLogin, 'is-z': isLogin }" id="b-container">
+      <div class="container b-container" :class="{ 'is-txl': isLogin, 'is-z': isLogin }" :style="{ opacity: isLogin ? 1 : 0, visibility: isLogin ? 'visible' : 'hidden' }" id="b-container">
         <div class="form">
           <!-- 登录表单标题 -->
           <h2 class="form-title">登入账号</h2>
 
-          <!-- 快捷登录图标区 -->
-          <div class="form-icons">
-            <!-- 电话图标：切换至手机验证码登录 -->
-            <button
-              class="icon-btn"
-              :class="{ active: activeKey === 'phone' }"
-              title="手机验证码登录"
-              @click="activeKey = activeKey === 'phone' ? 'account' : 'phone'"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.77 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.28-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-              </svg>
-            </button>
-          </div>
 
-          <!-- 副文案 -->
-          <span class="form-span">选择登录方式或电子邮箱登录</span>
+
 
           <!-- 账号密码登录表单 -->
           <div class="forms-wrapper">
@@ -144,11 +164,17 @@
                 class="auth-form"
                 layout="vertical"
               >
+                <!-- 输入框：账号输入 -->
                 <a-form-item name="username">
-                  <a-input v-model:value="formState.username" placeholder="账号" class="form-input" />
+                  <a-input v-model:value="formState.username" placeholder="请输入账号" class="form-input" >
+                    <template #prefix><span class="input-prefix">账号：</span></template>
+                  </a-input>
                 </a-form-item>
+                <!-- 输入框：密码输入 -->
                 <a-form-item name="password">
-                  <a-input-password v-model:value="formState.password" placeholder="密码" class="form-input" />
+                  <a-input-password v-model:value="formState.password" placeholder="请输入密码" class="form-input" >
+                    <template #prefix><span class="input-prefix">密码：</span></template>
+                  </a-input-password>
                 </a-form-item>
               </a-form>
               <a-form
@@ -161,11 +187,15 @@
                 layout="vertical"
               >
                 <a-form-item name="phone">
-                  <a-input v-model:value="formState.phone" placeholder="手机号" class="form-input" />
+                  <a-input v-model:value="formState.phone" placeholder="请输入手机号" class="form-input">
+                    <template #prefix><span class="input-prefix">手机号：</span></template>
+                  </a-input>
                 </a-form-item>
                 <a-form-item name="code">
                   <div class="code-row">
-                    <a-input v-model:value="formState.code" placeholder="验证码" class="form-input code-input" />
+                    <a-input v-model:value="formState.code" placeholder="请输入验证码" class="form-input code-input">
+                      <template #prefix><span class="input-prefix">验证码：</span></template>
+                    </a-input>
                     <button
                       class="code-btn"
                       :class="{ 'code-btn--disabled': countdown > 0 }"
@@ -179,6 +209,19 @@
                 </a-form-item>
               </a-form>
             </Transition>
+          </div>
+
+          <!-- 副文案 -->
+          <span class="form-span">选择登录方式或电子邮箱登录</span>
+
+          <!-- 将切换图标调整至输入框和忘记密码中间 -->
+          <div class="method-switcher">
+            <a-button type="text" :class="{ 'method-active': activeKey === 'account' }" @click="activeKey = 'account'" title="账号密码">
+              <template #icon><UserOutlined /></template>
+            </a-button>
+            <a-button type="text" :class="{ 'method-active': activeKey === 'phone' }" @click="activeKey = 'phone'" title="手机验证码">
+              <template #icon><MobileOutlined /></template>
+            </a-button>
           </div>
 
           <!-- 找回密码链接：始终占位，防止切换时错位 -->
@@ -232,10 +275,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
+// 导入需要的 Ant Design Vue 图标（Home、主题切换、登录方式切换等）
+import { HomeOutlined, BulbOutlined, UserOutlined, MobileOutlined } from '@ant-design/icons-vue';
 import { useUserStore } from '../stores/userStore';
+import { useSettingsStore } from '../stores/settingsStore';
+
+/**
+ * 【主题状态管理】
+ * 控制系统当前的亮暗色模式
+ */
+const settingsStore = useSettingsStore();
+
+const toggleTheme = () => {
+  const newTheme = settingsStore.theme === 'light' ? 'dark' : 'light';
+  settingsStore.toggleTheme(newTheme);
+};
+
+// 【初始化主题状态】
+onMounted(() => {
+  // 设置已由 settingsStore 全局管理
+});
 
 /**
  * 路由与全局状态库初始化
@@ -360,6 +422,131 @@ const handleSubmit = async (type: 'account' | 'phone') => {
 </script>
 
 <style scoped>
+/* =====================================================
+   动态背景动画与毛玻璃效果
+   ===================================================== */
+.background-animation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+}
+.background-animation ul li {
+  position: absolute;
+  border: 1px solid var(--color-primary);
+  background-color: var(--color-primary);
+  width: 30px;
+  height: 30px;
+  list-style: none;
+  opacity: 0;
+}
+.background-animation ul li {
+  opacity: 0; /* 默认不显示，通过动画显示 */
+}
+/* 通过调整 opacity 让主色调在背景中表现更轻盈 */
+.square li, .circle li {
+  opacity: 0.15 !important;
+}
+body[data-theme='dark'] .background-animation ul li {
+  border: 1px solid var(--color-primary);
+  background-color: var(--color-primary);
+  opacity: 0.1 !important;
+}
+.square li { top: 40vh; left: 60vw; animation: square 10s linear infinite; }
+.square li:nth-child(2) { top: 80vh; left: 10vw; animation-delay: 2s; }
+.square li:nth-child(3) { top: 80vh; left: 85vw; animation-delay: 4s; }
+.square li:nth-child(4) { top: 10vh; left: 70vw; animation-delay: 6s; }
+.square li:nth-child(5) { top: 10vh; left: 10vw; animation-delay: 8s; }
+
+.circle li { bottom: 0; left: 15vw; animation: circle 10s linear infinite; }
+.circle li:nth-child(2) { left: 35vw; animation-delay: 2s; }
+.circle li:nth-child(3) { left: 55vw; animation-delay: 6s; }
+.circle li:nth-child(4) { left: 75vw; animation-delay: 4s; }
+.circle li:nth-child(5) { left: 90vw; animation-delay: 8s; }
+
+@keyframes square {
+  0% { transform: scale(0) rotateY(0deg); opacity: 0.8; }
+  100% { transform: scale(5) rotateY(1000deg); opacity: 0; }
+}
+@keyframes circle {
+  0% { transform: scale(0) rotateY(0deg); opacity: 0.8; bottom: 0; border-radius: 0; }
+  100% { transform: scale(5) rotateY(1000deg); opacity: 0; bottom: 90vh; border-radius: 50%; }
+}
+
+/* =====================================================
+   左上角悬浮动作区
+   ===================================================== */
+.floating-actions {
+  position: absolute;
+  top: 25px;
+  left: 25px;
+  display: flex;
+  gap: 15px;
+  z-index: 1000;
+}
+
+.float-btn {
+  background-color: rgba(246, 247, 249, 0.7) !important;
+  border: none !important;
+  box-shadow: 4px 4px 10px rgba(184, 194, 204, 0.5), -4px -4px 10px rgba(255, 255, 255, 0.8) !important;
+  color: #6b7280 !important;
+  backdrop-filter: blur(4px);
+  transition: all 0.3s ease !important;
+}
+.float-btn:hover {
+  background-color: rgba(246, 247, 249, 0.9) !important;
+  color: var(--color-primary) !important;
+  transform: translateY(-2px);
+  box-shadow: 6px 6px 12px rgba(184, 194, 204, 0.6), -6px -6px 12px rgba(255, 255, 255, 0.9) !important;
+}
+body[data-theme='dark'] .float-btn {
+  background-color: rgba(31, 41, 55, 0.7) !important;
+  box-shadow: 2px 2px 6px rgba(10, 15, 25, 0.6), -2px -2px 6px rgba(45, 55, 75, 0.6) !important;
+  color: #9ca3af !important;
+}
+body[data-theme='dark'] .float-btn:hover {
+  background-color: rgba(31, 41, 55, 0.9) !important;
+  color: var(--color-primary) !important;
+  box-shadow: 4px 4px 8px rgba(10, 15, 25, 0.8), -4px -4px 8px rgba(45, 55, 75, 0.8) !important;
+}
+
+/* 前缀提示文字 */
+.input-prefix {
+  font-size: 13px;
+  color: #4d4f50;
+  margin-right: -25px;
+  margin-left: 15px;
+}
+
+/* 切换方式按钮样式 */
+.method-switcher {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 5px;
+  margin-bottom: 0px;
+}
+.method-switcher .ant-btn {
+  color: #a0a5a8;
+}
+.method-switcher .ant-btn:hover {
+  color: var(--color-primary);
+}
+body[data-theme='dark'] .method-switcher .ant-btn {
+  color: #6b7280;
+}
+body[data-theme='dark'] .method-switcher .ant-btn:hover {
+  color: var(--color-primary);
+}
+.method-active {
+  color: var(--color-primary) !important;
+  font-weight: bold;
+}
+
 /* 登录容器：全屏居中，使用项目全局背景变量 */
 .login-container {
   min-height: 100vh;
@@ -367,6 +554,7 @@ const handleSubmit = async (type: 'account' | 'phone') => {
   align-items: center;
   justify-content: center;
   background: var(--app-bg);
+  position: relative;
 }
 
 /* .shell：外层凸起卡片 */
@@ -377,8 +565,9 @@ const handleSubmit = async (type: 'account' | 'phone') => {
   height: 600px;
   min-height: 600px;
   padding: 25px;
-  background-color: #f6f7f9;
-  box-shadow: 10px 10px 10px #b8c2cc, -10px -10px 10px #ffffff;
+  background-color: rgba(246, 247, 249, 0.85);
+  backdrop-filter: blur(10px);
+  box-shadow: 10px 10px 10px rgba(184, 194, 204, 0.3), -10px -10px 10px rgba(255, 255, 255, 0.5);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -397,7 +586,7 @@ const handleSubmit = async (type: 'account' | 'phone') => {
   width: 600px;
   height: 100%;
   padding: 25px;
-  background-color: #f6f7f9;
+  background-color: transparent;
   transition: 1.25s;
 }
 
@@ -419,7 +608,7 @@ const handleSubmit = async (type: 'account' | 'phone') => {
 .form-title {
   font-size: 34px;
   font-weight: 700;
-  line-height: 3;
+  line-height: 2.5;
   color: #181818;
   letter-spacing: 6px;
   text-align: center;
@@ -451,8 +640,8 @@ const handleSubmit = async (type: 'account' | 'phone') => {
 .icon-btn.active { opacity: 1; color: #4B70E2; border-color: #4B70E2; box-shadow: none; }
 
 .form-span {
-  margin-top: 30px;
-  margin-bottom: 12px;
+  margin-top: 15px;
+  margin-bottom: 5px;
   font-size: 12px;
   color: #a0a5a8;
 }
@@ -460,7 +649,7 @@ const handleSubmit = async (type: 'account' | 'phone') => {
 .form-link {
   color: #181818;
   font-size: 13px;
-  margin-top: 16px;
+  margin-top: 5px;
   border-bottom: 1px solid #a0a5a8;
   line-height: 2;
   cursor: pointer;
@@ -468,14 +657,20 @@ const handleSubmit = async (type: 'account' | 'phone') => {
   transition: opacity 0.35s ease;
 }
 
-.auth-form { width: 350px; margin-bottom: 0; }
+.auth-form { width: 300px;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
 :deep(.auth-form .ant-form-item) { margin-bottom: 0; }
 :deep(.auth-form .ant-form-item-explain-error) { font-size: 11px; }
 
 /* forms-wrapper：固定高度容器，两个表单绝对叠放，防止 v-show 切换引起高度变化 */
 .forms-wrapper {
   position: relative;
-  width: 350px;
+  width: 300px;
   height: 96px; /* 两个 form-item（各约 48px）的总高度 */
 }
 
@@ -483,7 +678,7 @@ const handleSubmit = async (type: 'account' | 'phone') => {
   position: absolute;
   top: 0;
   left: 0;
-  width: 350px;
+  width: 300px;
 }
 
 /* form-fade：表单切换 opacity 渐变动画 */
@@ -502,11 +697,11 @@ const handleSubmit = async (type: 'account' | 'phone') => {
 
 /* form-input：neumorphic inset 输入框，背景与整体一致 #f6f7f9 */
 :deep(.form-input.ant-input) {
-  width: 350px;
+  width: 300px;
   height: 40px;
   margin: 4px 0;
   padding-left: 25px;
-  font-size: 13px;
+  font-size: 14px;
   border: none !important;
   outline: none !important;
   background-color: #f6f7f9 !important;
@@ -520,7 +715,7 @@ const handleSubmit = async (type: 'account' | 'phone') => {
 }
 
 :deep(.form-input.ant-input-affix-wrapper) {
-  width: 350px;
+  width: 300px;
   margin: 4px 0;
   padding: 0 11px 0 0;
   border: none !important;
@@ -532,7 +727,8 @@ const handleSubmit = async (type: 'account' | 'phone') => {
 :deep(.form-input.ant-input-affix-wrapper-focused) {
   box-shadow: inset 4px 4px 4px #c8d0da, inset -4px -4px 4px #f9f9f9 !important;
 }
-:deep(.form-input.ant-input-affix-wrapper .ant-input) {
+:deep(.form-input.ant-input-affix-wrapper .ant-input),
+:deep(.form-input.ant-input-affix-wrapper input) {
   border: none !important;
   box-shadow: none !important;
   background: transparent !important;
@@ -544,7 +740,7 @@ const handleSubmit = async (type: 'account' | 'phone') => {
 /* CodeInput：验证码输入框（table 布局） */
 :deep(.CodeInput.ant-input-search .ant-input-wrapper.ant-input-group) {
   display: table !important;
-  width: 350px !important;
+  width: 300px !important;
   margin: 4px 0;
   border: none;
   border-radius: 8px;
@@ -565,7 +761,7 @@ const handleSubmit = async (type: 'account' | 'phone') => {
   padding: 8px 12px 8px 25px;
   border-radius: 0 !important;
   color: #181818;
-  font-size: 13px;
+  font-size: 14px;
 }
 :deep(.CodeInput.ant-input-search .ant-input-group-addon) {
   display: table-cell !important;
@@ -625,9 +821,10 @@ const handleSubmit = async (type: 'account' | 'phone') => {
   padding: 50px;
   z-index: 200;
   transition: 1.25s;
-  background-color: #f6f7f9;
+  background-color: rgba(246, 247, 249, 0.4);
+  backdrop-filter: blur(10px);
   overflow: hidden;
-  box-shadow: 4px 4px 10px #c8d0da, -4px -4px 10px #c8d0da;
+  box-shadow: 4px 4px 10px rgba(200, 208, 218, 0.5), -4px -4px 10px rgba(200, 208, 218, 0.5);
 }
 
 /* is-txr：切换至登录态，欢迎侧滑至右侧 */
@@ -725,15 +922,15 @@ const handleSubmit = async (type: 'account' | 'phone') => {
   display: flex;
   gap: 8px;
   align-items: center;
-  width: 350px;
+  width: 300px; /* 显式设置总宽度为 300px，与上方手机号输入框完全对齐 */
 }
 
 .code-input {
-  flex: 1;
+  flex: 1; /* 让输入框占据剩余的所有空间，确保 (输入框 + gap + 按钮) = 300px */
 }
 
-:deep(.code-input.ant-input) {
-  width: 100% !important;
+:deep(.code-input.ant-input-affix-wrapper) {
+  width: 100% !important; /* 使其填满 flex: 1 后的可用空间 */
 }
 
 .code-btn {
@@ -849,8 +1046,9 @@ body[data-theme='dark'] :deep(.form-input.ant-input-affix-wrapper input) {
   background: transparent !important;
 }
 body[data-theme='dark'] :deep(.form-input .ant-input::placeholder),
-body[data-theme='dark'] :deep(.form-input.ant-input::placeholder) {
-  color: #6b7280 !important;
+body[data-theme='dark'] :deep(.form-input.ant-input::placeholder),
+body[data-theme='dark'] :deep(.form-input input::placeholder) {
+  color: #8892a0 !important;
 }
 
 /* 暗色验证码行 */
