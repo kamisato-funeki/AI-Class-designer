@@ -1,4 +1,4 @@
-<!-- 
+<!--
   核心布局组件 (CoreLayout)
   业务逻辑：
   1. 提供应用的整体框架，包含侧边栏导航、顶部栏和主内容区。
@@ -12,7 +12,7 @@
     <div v-if="isMobile && !collapsed" class="mobile-overlay" @click="collapsed = true"></div>
 
     <!-- Sidebar -->
-    <a-layout-sider v-model:collapsed="collapsed" :trigger="null" collapsible :collapsed-width="isMobile ? 0 : 80"
+    <a-layout-sider v-model:collapsed="collapsed" :trigger="null" collapsible :collapsed-width="isMobile ? 0 : 70"
       theme="light" :class="{ 'mobile-sider': isMobile }"
       :style="{ borderRight: '1px solid var(--app-border)', zIndex: 10 }">
       <!-- 侧边栏主体：品牌 Logo 和 导航菜单 -->
@@ -87,7 +87,7 @@
           </a-menu-item>
           <a-menu-item key="messages">
             <template #icon>
-              <a-badge dot>
+              <a-badge :dot="messageStore.unreadCount > 0">
                 <BellOutlined />
               </a-badge>
             </template>
@@ -100,7 +100,7 @@
     <!-- 右侧主内容区域 -->
     <a-layout>
       <a-layout-header
-        :style="{ background: 'var(--app-bg)', padding: isMobile ? '0 16px' : '0 24px', display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--app-border)' }">
+        :style="{ background: 'var(--app-bg)', padding: isMobile ? '0 10px' : '0 16px', display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--app-border)' }">
         <menu-unfold-outlined v-if="collapsed" class="trigger" @click="() => (collapsed = !collapsed)" />
         <menu-fold-outlined v-else class="trigger" @click="() => (collapsed = !collapsed)" />
 
@@ -207,6 +207,7 @@ import {
 import { useUserStore } from '../stores/userStore';
 import { useCoursewareStore } from '../stores/coursewareStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useMessageStore } from '../stores/messageStore';
 
 /**
  * 全局状态与核心服务初始化
@@ -216,6 +217,7 @@ const route = useRoute();                      // 路由元信息：用于实时
 const userStore = useUserStore();              // 用户仓库：管控登录态与教师个人画像
 const coursewareStore = useCoursewareStore();  // 课件仓库：支撑“开启新课”业务流程
 const settingsStore = useSettingsStore();      // 设置仓库：响应主题（深色/浅色）与国际化变更
+const messageStore = useMessageStore();        // 消息中心仓库：统一管理全局通知状态
 
 /**
  * 【响应式状态】UI 布局控制
@@ -273,14 +275,16 @@ onMounted(async () => {
   checkMobile();
   window.addEventListener('resize', checkMobile);
 
-  if (!userStore.user) {
-    try {
-      await userStore.login('admin', 'admin');
-    } catch (e) {
-      console.warn('Layout 自动登录尝试失败:', e);
+    if (!userStore.user) {
+      try {
+        await userStore.login('admin', 'admin');
+      } catch (e) {
+        console.warn('Layout 自动登录尝试失败:', e);
+      }
     }
-  }
-});
+    // 获取初始消息状态
+    messageStore.loadMessages();
+  });
 
 /**
  * 【生命周期钩子】onUnmounted
@@ -307,12 +311,12 @@ const handleMenuClick = (info: { key: string }) => {
     profile: '/profile',
     messages: '/messages'
   };
-  
+
   const targetPath = pathMap[info.key];
   if (targetPath) {
     router.push(targetPath);
   }
-  
+
   // B. 移动端优化：点击导航后自动收起侧边遮罩面板
   if (isMobile.value) {
     collapsed.value = true;
@@ -372,7 +376,7 @@ const createNewCourse = async () => {
   } finally {
     creatingCourse.value = false;
   }
-  
+
   // 窄屏适配：跳转后确保遮挡侧边栏已折叠
   if (isMobile.value) {
     collapsed.value = true;
@@ -385,7 +389,7 @@ const createNewCourse = async () => {
   height: 64px;
   display: flex;
   align-items: center;
-  padding: 0 24px;
+  padding: 0 16px;
   overflow: hidden;
 }
 
@@ -443,7 +447,7 @@ const createNewCourse = async () => {
 .menu-container {
   padding: 16px 0;
   height: calc(100vh - 64px - 160px);
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }

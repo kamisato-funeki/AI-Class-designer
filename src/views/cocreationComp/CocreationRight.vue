@@ -222,7 +222,7 @@ const initMindMap = () => {
     // 初始渲染时稍微向左偏移，以避开右侧浮窗
     setTimeout(() => {
       if (mindMapInstance) {
-        mindMapInstance.view.translateX(-250);
+        mindMapInstance.view.translateX(-150);
       }
     }, 100);
 
