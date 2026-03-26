@@ -601,7 +601,7 @@ const handleSubmit = async (type: 'account' | 'phone') => {
   font-weight: 700;
   font-size: 14px;
   letter-spacing: 1.15px;
-  background-color: #4B70E2;
+  background-color: var(--color-primary);
   color: #f9f9f9;
   box-shadow: 8px 8px 16px #c8d0da, -8px -8px 16px #f9f9f9;
   border: none;
@@ -699,7 +699,7 @@ const handleSubmit = async (type: 'account' | 'phone') => {
   font-weight: 700;
   font-size: 14px;
   letter-spacing: 1.15px;
-  background-color: #4B70E2;
+  background-color: var(--color-primary);
   color: #f9f9f9;
   box-shadow: 8px 8px 16px #c8d0da, -8px -8px 16px #f9f9f9;
   border: none;
@@ -747,7 +747,7 @@ const handleSubmit = async (type: 'account' | 'phone') => {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.5px;
-  background-color: #4B70E2;
+  background-color: var(--color-primary);
   color: #f9f9f9;
   box-shadow: 3px 3px 6px #c8d0da, -3px -3px 6px #f9f9f9;
   transition: box-shadow 0.25s ease, transform 0.25s, background-color 0.25s;
@@ -770,5 +770,116 @@ const handleSubmit = async (type: 'account' | 'phone') => {
   cursor: not-allowed !important;
   box-shadow: inset 2px 2px 4px #c8d0da, inset -2px -2px 4px #f9f9f9 !important;
   transform: none !important;
+}
+
+/* =====================================================
+   暗色主题适配（body[data-theme='dark']）
+   panel 背景：#1f2937，暗阴影：#161c27，亮阴影：#262f3d
+   ===================================================== */
+body[data-theme='dark'] .login-container {
+  background: var(--app-bg);
+}
+
+body[data-theme='dark'] .shell {
+  background-color: #1f2937;
+  box-shadow: 10px 10px 10px #161c27, -10px -10px 10px #262f3d;
+}
+
+body[data-theme='dark'] .container {
+  background-color: #1f2937;
+}
+
+body[data-theme='dark'] .switch {
+  background-color: #1f2937;
+  box-shadow: 4px 4px 10px #161c27, -4px -4px 10px #161c27;
+}
+
+body[data-theme='dark'] .switch-circle {
+  background-color: #1f2937;
+  box-shadow: inset 8px 8px 12px #111827, inset -8px -8px 12px #28334a;
+}
+
+body[data-theme='dark'] .form-title,
+body[data-theme='dark'] .switch-title {
+  color: var(--app-text-main);
+}
+
+body[data-theme='dark'] .switch-description,
+body[data-theme='dark'] .form-span {
+  color: var(--app-text-sub);
+}
+
+body[data-theme='dark'] .form-link {
+  color: var(--app-text-main);
+  border-bottom-color: var(--app-border);
+}
+
+body[data-theme='dark'] .icon-btn {
+  border-color: #4b5563;
+  color: #9ca3af;
+}
+body[data-theme='dark'] .icon-btn:hover {
+  border-color: var(--app-text-main);
+  color: var(--app-text-main);
+}
+body[data-theme='dark'] .icon-btn.active {
+  border-color: #7b95f0;
+  color: #7b95f0;
+}
+
+/* 暗色输入框 */
+body[data-theme='dark'] :deep(.form-input.ant-input) {
+  background-color: #1f2937 !important;
+  color: var(--app-text-main) !important;
+  box-shadow: inset 2px 2px 4px #161c27, inset -2px -2px 4px #262f3d !important;
+}
+body[data-theme='dark'] :deep(.form-input.ant-input:focus) {
+  box-shadow: inset 4px 4px 4px #161c27, inset -4px -4px 4px #262f3d !important;
+}
+body[data-theme='dark'] :deep(.form-input.ant-input-affix-wrapper) {
+  background-color: #1f2937 !important;
+  box-shadow: inset 2px 2px 4px #161c27, inset -2px -2px 4px #262f3d !important;
+}
+body[data-theme='dark'] :deep(.form-input.ant-input-affix-wrapper-focused) {
+  box-shadow: inset 4px 4px 4px #161c27, inset -4px -4px 4px #262f3d !important;
+}
+body[data-theme='dark'] :deep(.form-input.ant-input-affix-wrapper .ant-input),
+body[data-theme='dark'] :deep(.form-input.ant-input-affix-wrapper input) {
+  color: var(--app-text-main) !important;
+  background: transparent !important;
+}
+body[data-theme='dark'] :deep(.form-input .ant-input::placeholder),
+body[data-theme='dark'] :deep(.form-input.ant-input::placeholder) {
+  color: #6b7280 !important;
+}
+
+/* 暗色验证码行 */
+body[data-theme='dark'] .code-btn {
+  background-color: var(--color-primary);
+  color: #fff;
+  box-shadow: 3px 3px 6px #161c27, -3px -3px 6px #262f3d;
+}
+body[data-theme='dark'] .code-btn:hover {
+  box-shadow: 4px 4px 8px #161c27, -4px -4px 8px #262f3d;
+}
+body[data-theme='dark'] .code-btn--disabled {
+  background-color: #374151 !important;
+  color: #6b7280 !important;
+  box-shadow: inset 2px 2px 4px #161c27, inset -2px -2px 4px #262f3d !important;
+}
+
+/* 暗色提交/切换按钮 */
+body[data-theme='dark'] .form-button,
+body[data-theme='dark'] .switch-btn {
+  background-color: var(--color-primary);
+  box-shadow: 8px 8px 16px #161c27, -8px -8px 16px #262f3d;
+}
+body[data-theme='dark'] .form-button:hover,
+body[data-theme='dark'] .switch-btn:hover {
+  box-shadow: 6px 6px 10px #161c27, -6px -6px 10px #262f3d;
+}
+body[data-theme='dark'] .form-button:active,
+body[data-theme='dark'] .switch-btn:active {
+  box-shadow: 2px 2px 6px #161c27, -2px -2px 6px #262f3d;
 }
 </style>
