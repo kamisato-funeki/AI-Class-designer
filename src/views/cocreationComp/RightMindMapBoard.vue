@@ -48,8 +48,13 @@
       </a-card>
     </div>
 
-    <!-- 思维导图增强控件：回到中心根节点浮窗按钮 -->
+    <!-- 思维导图增强控件：回到中心根节点浮窗按钮 & 导出按钮 -->
     <div class="mindmap-tools">
+      <a-tooltip title="导出为PNG图片">
+        <a-button shape="circle" size="large" type="primary" class="reset-view-btn" @click="$emit('exportPng')">
+          <ExportOutlined />
+        </a-button>
+      </a-tooltip>
       <a-tooltip title="回到根节点">
         <a-button shape="circle" size="large" type="primary" class="reset-view-btn" @click="$emit('resetView')">
           <AimOutlined />
@@ -66,7 +71,7 @@
  * 业务逻辑：提供对大纲进行需求圈定（生成何种资料）的设置界面，支持折叠减少空间占用；并提供一键定位思维导图回原点的便捷功能。
  */
 import { ref } from 'vue';
-import { UpOutlined, DownOutlined, AimOutlined } from '@ant-design/icons-vue';
+import { UpOutlined, DownOutlined, AimOutlined, ExportOutlined } from '@ant-design/icons-vue';
 import { useCocreationStore } from '../../stores/cocreationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
@@ -86,7 +91,8 @@ defineProps<{
 
 // `confirmSummary`: 用户确定生成资料清单请求
 // `resetView`: 触发思维导图视角复位操作
-defineEmits(['confirmSummary', 'resetView']);
+// `exportPng`: 出发思维导图PNG导出操作
+defineEmits(['confirmSummary', 'resetView', 'exportPng']);
 
 /**
  * 【状态变量：需求确认看板】
@@ -158,9 +164,12 @@ const toggleCollapse = () => {
 /* 回根节点按钮及工具栏样式 */
 .mindmap-tools {
   position: absolute;
-  bottom: 24px;
+  bottom: 32px;
   right: 24px;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .reset-view-btn {
