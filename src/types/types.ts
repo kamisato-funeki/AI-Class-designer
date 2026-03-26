@@ -77,6 +77,40 @@ export interface ClassTask {
   createTime: string
 }
 
+/**
+ * 班级作业信息
+ * @property id                - 作业唯一标识
+ * @property classId           - 所属班级 ID
+ * @property title             - 作业题目
+ * @property description       - 作业描述
+ * @property attachments       - 附件列表
+ * @property dueDate           - 截止日期
+ * @property createTime        - 布置日期
+ * @property completedCount    - 完成人数
+ * @property totalCount        - 总人数
+ * @property studentStats      - 图表及完成情况明细（学生id、姓名、成绩）
+ */
+export interface HomeworkInfo {
+  id: string
+  classId: string
+  title: string
+  description: string
+  attachments: { name: string; url: string }[]
+  dueDate: string
+  createTime: string
+  completedCount: number
+  totalCount: number
+  studentStats: {
+    studentId: string
+    name: string
+    grade: number
+    avatar: string
+    submittedContent?: string
+    attachments?: { name: string; url: string }[]
+    evaluation?: string
+  }[]
+}
+
 // ==================== 课件相关 ====================
 
 /**
@@ -205,12 +239,16 @@ export interface StudentMessage {
 
 /**
  * 课程表条目
- * @property id      - 条目唯一标识
- * @property classId - 所属班级 ID
- * @property day     - 星期几
- * @property timeStr - 上课时间段字符串
- * @property subject - 课程学科
- * @property teacher - 授课教师
+ * @property id        - 条目唯一标识
+ * @property classId   - 所属班级 ID
+ * @property day       - 星期几
+ * @property timeStr   - 上课时间段字符串
+ * @property subject   - 课程学科
+ * @property teacher   - 授课教师
+ * @property room      - 授课教室（可选）
+ * @property dayOfWeek - 星期几数字：1-7（可选）
+ * @property period    - 起始上课节次：1-11（可选）
+ * @property length    - 连续上多少节课（可选，默认 1）
  */
 export interface CourseScheduleItem {
   id: string
@@ -219,6 +257,10 @@ export interface CourseScheduleItem {
   timeStr: string
   subject: string
   teacher: string
+  room?: string
+  dayOfWeek?: number
+  period?: number
+  length?: number
 }
 
 // ==================== AI 共创对话相关 ====================

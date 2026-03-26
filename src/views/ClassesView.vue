@@ -41,24 +41,27 @@
             <div class="detail-header" v-show="!(activeTab === 'class-chats' && classesStore.activeGroupChat)">
               <h3>
                 {{ classesStore.currentClass.grade }}{{ classesStore.currentClass.classNumber }}
-                <span style="font-size: 14px; font-weight: normal; color: gray;">({{ classesStore.currentClass.name }})</span>
+                <span style="font-size: 14px; font-weight: normal; color: gray;">({{ classesStore.currentClass.name
+                  }})</span>
                 - {{ currentTabName }}
               </h3>
               <a-space>
                 <a-button type="primary" @click="openCreateTask('material')">发布课件</a-button>
                 <a-button @click="openCreateTask('homework')">布置作业</a-button>
-                <a-button @click="openCreateTask('discussion')">发起讨论</a-button>
               </a-space>
             </div>
 
-            <a-tabs :activeKey="activeTab" @change="handleTabChange" class="nav-tabs" v-show="!(activeTab === 'class-chats' && classesStore.activeGroupChat)">
+            <a-tabs :activeKey="activeTab" @change="handleTabChange" class="nav-tabs"
+              v-show="!(activeTab === 'class-chats' && classesStore.activeGroupChat)">
               <a-tab-pane key="class-students" tab="学生名单" />
               <a-tab-pane key="class-schedule" tab="课程表" />
+              <a-tab-pane key="class-homework" tab="班级作业" />
               <a-tab-pane key="class-dynamics" tab="班级动态" />
               <a-tab-pane key="class-chats" tab="班级消息" />
             </a-tabs>
 
-            <div class="tab-content" :style="(activeTab === 'class-chats' && classesStore.activeGroupChat) ? 'padding-top: 0;' : ''">
+            <div class="tab-content"
+              :style="(activeTab === 'class-chats' && classesStore.activeGroupChat) ? 'padding-top: 0;' : ''">
               <!-- 嵌套路由占位符，渲染 学生名单/课程表/班级动态/班级消息 对应的组件 -->
               <router-view @openDetails="openStudentDetails" />
             </div>
@@ -99,7 +102,8 @@
           </a-select>
         </a-form-item>
         <a-form-item label="班级人数">
-          <a-input-number v-model:value="formStateClass.studentCount" placeholder="请填写班级人数" :min="1" style="width: 100%" />
+          <a-input-number v-model:value="formStateClass.studentCount" placeholder="请填写班级人数" :min="1"
+            style="width: 100%" />
         </a-form-item>
         <a-form-item label="班级简介">
           <a-textarea v-model:value="formStateClass.description" placeholder="请输入班级简介" :rows="3" />
@@ -107,8 +111,7 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="createTaskVisible"
-      :title="taskType === 'homework' ? '布置作业' : taskType === 'discussion' ? '发起讨论' : '发布课件'" @ok="handleCreateTask"
+    <a-modal v-model:open="createTaskVisible" :title="taskType === 'homework' ? '布置作业' : '发布课件'" @ok="handleCreateTask"
       :confirmLoading="loading" destroyOnClose>
       <a-form layout="vertical">
         <a-form-item label="标题">
@@ -135,7 +138,19 @@
           </a-form-item>
         </template>
 
-        <a-form-item label="内容描述">
+        <!-- 针对布置作业，支持截止时间的必选项 -->
+        <a-form-item v-if="taskType === 'homework'" label="截止时间" required>
+          <a-date-picker v-model:value="formStateTask.dueDate" show-time format="YYYY-MM-DD HH:mm:ss"
+            placeholder="请选择截止时间" style="width: 100%" />
+        </a-form-item>
+
+        <a-form-item v-if="taskType === 'homework'" label="添加附件(选填)">
+          <a-upload v-model:file-list="localFileList" name="file" action="" :before-upload="() => false">
+            <a-button>点击上传附件</a-button>
+          </a-upload>
+        </a-form-item>
+
+        <a-form-item label="内容描述" required>
           <a-textarea v-model:value="formStateTask.description" placeholder="请输入详细内容" :rows="4" />
         </a-form-item>
       </a-form>
@@ -147,7 +162,8 @@
         <div style="display:flex; justify-content: space-around; margin-bottom: 20px;">
           <a-statistic title="学习进度" :value="activeStudentDetails.progress" suffix="%" />
           <a-statistic title="活跃发言" :value="activeStudentDetails.activeCount" suffix="次" />
-          <a-statistic title="作业提交" :value="`${activeStudentDetails.homeworkCompleted} / ${activeStudentDetails.homeworkTotal}`" />
+          <a-statistic title="作业提交"
+            :value="`${activeStudentDetails.homeworkCompleted} / ${activeStudentDetails.homeworkTotal}`" />
           <a-statistic title="平均成绩" :value="activeStudentDetails.averageGrade" suffix="分" />
         </div>
         <v-chart style="height: 300px; width: 100%" :option="chartOption" autoresize />
@@ -162,6 +178,7 @@ import { message } from 'ant-design-vue';
 import { useClassesStore } from '../stores/classesStore';
 import type { StudentInfo } from '../types/types';
 import { useRoute, useRouter } from 'vue-router';
+import type { Dayjs } from 'dayjs';
 import { use } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
 import { BarChart, LineChart } from 'echarts/charts';
@@ -171,7 +188,7 @@ import VChart from 'vue-echarts';
 // 注册 ECharts 核心组件，支持柱状图、折线图及其相关组件
 use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent]);
 
-/** 
+/**
  * 核心状态与路由管理
  */
 const classesStore = useClassesStore(); // 班级数据管理仓库：封装了班级列表加载、班级切换、动态资产发布等核心逻辑
@@ -186,7 +203,7 @@ const router = useRouter();             // 路由控制器：实现跨班级、�
 const activeTab = computed(() => {
   const name = route.name as string;
   if (!name) return 'class-students';
-  if (['class-students', 'class-schedule', 'class-dynamics', 'class-chats'].includes(name)) {
+  if (['class-students', 'class-schedule', 'class-homework', 'class-dynamics', 'class-chats'].includes(name)) {
     return name;
   }
   return 'class-students';
@@ -200,6 +217,7 @@ const currentTabName = computed(() => {
   const map: Record<string, string> = {
     'class-students': '学生名单',
     'class-schedule': '课程表',
+    'class-homework': '班级作业',
     'class-dynamics': '班级动态',
     'class-chats': '班级消息',
   };
@@ -217,10 +235,10 @@ const studentStatsVisible = ref(false); // “学生个体画像/成绩统计”
 /**
  * 【表单业务状态】
  */
-const taskType = ref<'homework' | 'discussion' | 'material'>('homework'); // 资产发布的操作类型
+const taskType = ref<'homework' | 'material'>('homework'); // 资产发布的操作类型
 
 // 班级创建表单暂存对象
-const formStateClass = ref({ 
+const formStateClass = ref({
   name: '',         // 班级名称（如：特优班）
   grade: '三年级',   // 所在年级
   classNumber: '1班', // 班次
@@ -232,16 +250,18 @@ const formStateClass = ref({
 const formStateTask = ref<{
   title: string;
   description: string;
-  type: 'homework' | 'discussion' | 'material';
+  type: 'homework' | 'material';
+  dueDate?: Dayjs | null;
   materialSource: 'local' | 'generated';
-}>({ 
-  title: '', 
-  description: '', 
-  type: 'homework', 
+}>({
+  title: '',
+  description: '',
+  type: 'homework',
+  dueDate: null,
   materialSource: 'local' // 发布课件时选择引用本地文件或 AI 生成的存档
 });
 
-const localFileList = ref<unknown[]>([]); // 手动选择的文件队列（仅作为展示 placeholder）
+const localFileList = ref<Record<string, unknown>[]>([]); // 手动选择的文件队列（仅作为展示 placeholder）
 const activeStudentDetails = ref<StudentInfo | null>(null); // 指向当前正在查看画像的学生数据
 const chartOption = ref({}); // 存储学生成绩 BarChart 的 ECharts 配置项
 
@@ -286,7 +306,7 @@ onMounted(() => {
  */
 const handleClassSwitch = async (id: string) => {
   loading.value = true;
-  classesStore.activeGroupChat = null; 
+  classesStore.activeGroupChat = null;
   await classesStore.selectClass(id);
   router.push({ name: activeTab.value || 'class-students', params: { classId: id } });
   loading.value = false;
@@ -326,11 +346,11 @@ const handleCreateClass = async () => {
 /**
  * 【函数】openCreateTask
  * 作用：根据传入的动作类型，唤起对应的发布模态框
- * @param type 'material' | 'homework' | 'discussion'
+ * @param type 'material' | 'homework'
  */
-const openCreateTask = (type: 'homework' | 'discussion' | 'material') => {
+const openCreateTask = (type: 'homework' | 'material') => {
   taskType.value = type;
-  formStateTask.value = { title: '', description: '', type, materialSource: 'local' };
+  formStateTask.value = { title: '', description: '', type, dueDate: null, materialSource: 'local' };
   localFileList.value = [];
   createTaskVisible.value = true;
 };
@@ -342,21 +362,31 @@ const openCreateTask = (type: 'homework' | 'discussion' | 'material') => {
  */
 const handleCreateTask = async () => {
   if (!formStateTask.value.title) return message.warning('请输入标题');
+  if (!formStateTask.value.description) return message.warning('请输入内容描述');
+  if (taskType.value === 'homework' && !formStateTask.value.dueDate) {
+    return message.warning('请选择截止时间');
+  }
+
   if (!classesStore.currentClass) return;
   loading.value = true;
-  
+
   const payload: Record<string, unknown> = {
     classId: classesStore.currentClass.id,
-    ...formStateTask.value
+    ...formStateTask.value,
+    dueDate: formStateTask.value.dueDate ? formStateTask.value.dueDate.format('YYYY-MM-DD HH:mm:ss') : undefined,
   };
-  
+
   // 注入附加元数据描述
   if (taskType.value === 'material') {
     const suffix = formStateTask.value.materialSource === 'local' ? ' [附件: 本地文件]' : ' [附件: AI共创仓库资源]';
     payload.description += suffix;
+    await classesStore.createTask(payload);
+  } else if (taskType.value === 'homework') {
+    const fakeAttachments = localFileList.value.map((f: Record<string, unknown>) => ({ name: (f.name as string) || '附件', url: '#' }));
+    payload.attachments = fakeAttachments;
+    await classesStore.createHomework(payload);
   }
-  
-  await classesStore.createTask(payload);
+
   createTaskVisible.value = false;
   loading.value = false;
   message.success('发布任务成功');
@@ -374,7 +404,7 @@ const openStudentDetails = (student: StudentInfo) => {
   const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#1677ff';
 
   activeStudentDetails.value = student;
-  
+
   chartOption.value = {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     legend: { show: false },
@@ -461,6 +491,7 @@ const openStudentDetails = (student: StudentInfo) => {
   overflow-y: hidden;
   display: flex;
   flex-direction: column;
+  margin-top: -20px;
 }
 
 .detail-card {
@@ -494,10 +525,9 @@ const openStudentDetails = (student: StudentInfo) => {
   margin-top: 16px;
 }
 
-/* We force the router view container to scroll */
 .tab-content {
   flex: 1;
   overflow-y: auto;
-  padding-top: 16px;
+  padding-top: 0px;
 }
 </style>

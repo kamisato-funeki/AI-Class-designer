@@ -3,14 +3,23 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
+import electron from 'vite-plugin-electron'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: process.env.ELECTRON === 'true' ? './' : '/',
   plugins: [
     vue(),
     vueDevTools({
       launchEditor: 'antigravity',
     }),
+    ...(process.env.ELECTRON === 'true'
+      ? [
+          electron({
+            entry: 'electron/main.ts',
+          }),
+        ]
+      : []),
   ],
   resolve: {
     alias: {

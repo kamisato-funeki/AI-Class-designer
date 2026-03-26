@@ -3,11 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
+    "dev:electron": "cross-env ELECTRON=true vite",
     "build": "run-p type-check \"build-only {@}\" --",
+    "build:electron": "run-p type-check \"build-only:electron {@}\" -- && electron-builder",
     "preview": "vite preview",
     "build-only": "vite build",
+    "build-only:electron": "cross-env ELECTRON=true vite build",
     "type-check": "vue-tsc --build",
     "lint": "run-s lint:*",
     "lint:oxlint": "oxlint . --fix",
@@ -50,6 +54,9 @@
     "@vitejs/plugin-vue": "^6.0.4",
     "@vue/eslint-config-typescript": "^14.7.0",
     "@vue/tsconfig": "^0.8.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.0.4",
+    "electron-builder": "^26.8.1",
     "eslint": "^10.0.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-oxlint": "~1.50.0",
@@ -60,10 +67,27 @@
     "prettier": "3.8.1",
     "typescript": "~5.9.3",
     "vite": "^7.3.1",
+    "vite-plugin-electron": "^0.29.1",
     "vite-plugin-vue-devtools": "^8.0.6",
     "vue-tsc": "^3.2.5"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
+  },
+  "build": {
+    "appId": "com.aiclassdesigner.app",
+    "productName": "AI Class Designer",
+    "directories": {
+      "output": "dist_electron"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
