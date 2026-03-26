@@ -34,15 +34,15 @@
         <div class="dashboard-grid">
           <!-- 左侧：课件列表与统计 -->
           <div class="left-col">
-            <!-- 常用模板板块 -->
+            <!-- 最近编辑的课件 -->
             <div class="section-card">
               <div class="section-header">
-                <h3>常用模板</h3>
+                <h3>最近课件</h3>
                 <a-button type="link" @click="$router.push('/courseware')">查看全部</a-button>
               </div>
               <div class="course-list">
                 <a-card hoverable class="course-item" v-for="cw in coursewareStore.coursewares.slice(0, 3)"
-                  :key="'tpl' + cw.id" @click="$router.push('/cocreation')">
+                  :key="'cw' + cw.id" @click="$router.push({ path: '/cocreation', query: { id: cw.id } })">
                   <template #cover>
                     <div class="course-cover-placeholder"
                       :style="{ backgroundImage: `url(${cw.coverImage})`, backgroundSize: 'cover' }">
@@ -56,15 +56,15 @@
               </div>
             </div>
 
-            <!-- 最近编辑的课件 -->
+            <!-- 常用模板板块 -->
             <div class="section-card">
               <div class="section-header">
-                <h3>最近课件</h3>
+                <h3>常用模板</h3>
                 <a-button type="link" @click="$router.push('/courseware')">查看全部</a-button>
               </div>
               <div class="course-list">
                 <a-card hoverable class="course-item" v-for="cw in coursewareStore.coursewares.slice(0, 3)"
-                  :key="'cw' + cw.id" @click="$router.push('/cocreation')">
+                  :key="'tpl' + cw.id" @click="$router.push({ path: '/cocreation', query: { id: cw.id } })">
                   <template #cover>
                     <div class="course-cover-placeholder"
                       :style="{ backgroundImage: `url(${cw.coverImage})`, backgroundSize: 'cover' }">
@@ -185,7 +185,7 @@ const handleBgClick = (e: MouseEvent) => {
 
   const id = shapeIdCounter++;
   const shapeType = shapeTypes[Math.floor(Math.random() * shapeTypes.length)] as string;
-  const size = 30 + Math.random() * 40; 
+  const size = 30 + Math.random() * 40;
 
   const shape: BgShape = {
     id,
@@ -202,7 +202,7 @@ const handleBgClick = (e: MouseEvent) => {
 
   // 动画队列管理
   if (clickShapes.value.length >= 10) {
-    clickShapes.value.shift(); 
+    clickShapes.value.shift();
   }
   clickShapes.value.push(shape);
 
@@ -365,6 +365,7 @@ onMounted(() => {
   margin-bottom: 2rem;
   position: relative;
   z-index: 5;
+  bottom: 2vh;
 }
 
 /* 蒙版背景模糊效 */

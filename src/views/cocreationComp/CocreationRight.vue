@@ -18,6 +18,7 @@
             :isGeneratingMaterials="isGeneratingMaterials"
             @confirmSummary="handleConfirmSummary"
             @resetView="handleResetView"
+            @exportPng="handleExportPng"
           />
         </div>
       </transition>
@@ -45,6 +46,19 @@
       @downloadSingle="downloadSingleMaterial"
       @downloadAll="downloadMaterial"
     />
+
+    <!-- 右键独立菜单 -->
+    <div v-show="contextMenuState.visible"
+         class="custom-context-menu"
+         :class="{ 'dark-theme': settingsStore.theme === 'dark' }"
+         :style="{ left: contextMenuState.x + 'px', top: contextMenuState.y + 'px' }"
+         @click.stop>
+      <a-menu mode="vertical" :theme="settingsStore.theme === 'dark' ? 'dark' : 'light'" :selectable="false" style="min-width: 140px; border-radius: 8px;">
+        <a-menu-item key="sibling" @click="handleContextAction('INSERT_NODE')">添加同级节点</a-menu-item>
+        <a-menu-item key="child" @click="handleContextAction('INSERT_CHILD_NODE')">添加子节点</a-menu-item>
+        <a-menu-item key="delete" @click="handleContextAction('REMOVE_NODE')" danger>删除节点</a-menu-item>
+      </a-menu>
+    </div>
   </div>
 </template>
 
@@ -56,9 +70,13 @@
  * 2. 挂载中间的主体渲染区，包括思维导图页 (RightMindMapBoard) 与资源预览页 (RightPreviewBoard)。
  * 3. 维护共用的上下文状态（如缩放、全屏变量等）和实例化第三方视图引擎（如 mindmap）。
  */
-import { ref, reactive, watch, nextTick, onMounted } from 'vue';
+import { ref, reactive, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { message } from 'ant-design-vue';
 import MindMap from 'simple-mind-map';
+// @ts-expect-error simple-mind-map typings uncomplete
+import Export from 'simple-mind-map/src/plugins/Export.js';
+
+MindMap.usePlugin(Export);
 
 import RightBoardHeader from './RightBoardHeader.vue';
 import RightMindMapBoard from './RightMindMapBoard.vue';
@@ -89,6 +107,14 @@ const zoomLevels = reactive<Record<'mindmap' | 'ppt' | 'doc' | 'video' | 'html',
 });
 const isGeneratingMaterials = ref(false);
 const isFullscreenEdit = ref(false);
+
+// 右键菜单状态
+const contextMenuState = reactive({
+  visible: false,
+  x: 0,
+  y: 0,
+  node: null as unknown
+});
 
 let mindMapInstance: MindMap | null = null;
 
@@ -196,18 +222,42 @@ const initMindMap = () => {
     // 初始渲染时稍微向左偏移，以避开右侧浮窗
     setTimeout(() => {
       if (mindMapInstance) {
-        mindMapInstance.view.translateX(-250);
+        mindMapInstance.view.translateX(-150);
       }
     }, 100);
 
-    const mm = mindMapInstance as unknown as { on: (ev: string, fn: () => void) => void };
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+    const mm = mindMapInstance as unknown as { on: (ev: string, fn: Function) => void };
     mm.on('data_change', saveMindMapData);
     mm.on('node_text_edit_end', saveMindMapData);
+
+    // 绑定右键及点击事件，实现自定义右键菜单逻辑
+    mm.on('node_contextmenu', (e: MouseEvent, node: unknown) => {
+      e.preventDefault();
+      contextMenuState.visible = true;
+      contextMenuState.x = e.clientX;
+      contextMenuState.y = e.clientY;
+      contextMenuState.node = node;
+    });
+    mm.on('node_click', () => { contextMenuState.visible = false; });
+    mm.on('draw_click', () => { contextMenuState.visible = false; });
+    mm.on('view_panned', () => { contextMenuState.visible = false; });
   });
+};
+
+const closeContextMenu = () => {
+  if (contextMenuState.visible) {
+    contextMenuState.visible = false;
+  }
 };
 
 onMounted(() => {
   if (activeTab.value === 'mindmap') initMindMap();
+  document.addEventListener('click', closeContextMenu);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeContextMenu);
 });
 
 watch(activeTab, (val) => {
@@ -270,6 +320,32 @@ const handleResetView = () => {
   }
 };
 
+// 导出导图为 PNG 图片
+const handleExportPng = () => {
+  if (!mindMapInstance) return;
+  message.loading({ content: '正在导出思维导图为图片...', key: 'export', duration: 0 });
+  try {
+    mindMapInstance.export('png', true, '课程大纲结构图');
+    message.success({ content: '导出成功！', key: 'export', duration: 2 });
+  } catch {
+    message.error({ content: '导出失败！', key: 'export', duration: 2 });
+  }
+};
+
+// 执行右键菜单指定操作
+const handleContextAction = (action: string) => {
+  if (!mindMapInstance || !contextMenuState.node) return;
+  const mm = mindMapInstance as unknown as { execCommand: (cmd: string) => void };
+  if (action === 'INSERT_NODE') {
+    mm.execCommand('INSERT_NODE');
+  } else if (action === 'INSERT_CHILD_NODE') {
+    mm.execCommand('INSERT_CHILD_NODE');
+  } else if (action === 'REMOVE_NODE') {
+    mm.execCommand('REMOVE_NODE');
+  }
+  contextMenuState.visible = false;
+};
+
 /**
  * 【回调】底部操作群
  */
@@ -330,5 +406,18 @@ const openFullscreenEdit = () => {
 .fade-slide-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+/* 右键菜单 */
+.custom-context-menu {
+  position: fixed;
+  z-index: 1050;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  min-width: 140px;
+}
+.dark-theme.custom-context-menu {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 </style>
