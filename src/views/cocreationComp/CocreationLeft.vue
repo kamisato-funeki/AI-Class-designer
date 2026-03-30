@@ -144,9 +144,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useCocreationStore } from '../../stores/cocreationStore';
 import { useUserStore } from '../../stores/userStore';
 import { useCoursewareStore } from '../../stores/coursewareStore';
-import { streamChat, stopGeneration } from '../../utils/chat';
 import { startVoiceToText, type VttSession } from '../../utils/vTt';
-import type { ChatMessage } from '../../types/types';
 import dayjs from 'dayjs';
 import { marked } from 'marked';
 
@@ -313,6 +311,9 @@ const handleSend = () => {
   const val = inputVal.value;
   inputVal.value = '';
   let fileContext = '';
+  
+  const filesToUpload = uploadedFiles.value.map(f => f.raw);
+
   if (uploadedFiles.value.length > 0) {
     // 文本化文件列表，作为 Prompt 的一部分
     fileContext = `[附带文件：${uploadedFiles.value.map(f => f.name).join(', ')}]`;
@@ -323,81 +324,43 @@ const handleSend = () => {
     id: uuidv4(), role: 'user', content: finalVal, type: 'text', time: dayjs().format('YYYY-MM-DD HH:mm:ss')
   });
   scrollToBottom();
-  handleSendChat(finalVal);
+  handleSendChat(finalVal, filesToUpload);
 };
 
 /**
  * 【核心异步函数】handleSendChat
- * 作用：调用 DeepSeek (streamChat) 实现流式交互
- * 业务逻辑：
- * 1. 创建空的 AI 消息占位符。
- * 2. 传入当前课程的 Context 信息。
- * 3. 在 `onToken` 中逐字累加显示内容，并强制滚底。
- * 4. 结束后清理特定 XML 标签，并更新可能的课件标题。
+ * 作用：调用 store 中的流式上传方法
  * @param text 发送的 Prompt 文本
+ * @param files 附加的文件列表
  */
-const handleSendChat = async (text: string) => {
+const handleSendChat = async (text: string, files?: File[]) => {
   const activeCourseId = currentCourse.value?.id;
-  cocreationStore.isGenerating = true;
-
-  const assistantMsg: ChatMessage = {
-    id: uuidv4(), role: 'assistant', content: '', type: 'text', time: dayjs().format('YYYY-MM-DD HH:mm:ss')
-  };
-  cocreationStore.addMessage(assistantMsg);
-
-  await streamChat(
+  
+  await cocreationStore.sendStreamChatMessage(
     text,
-    (token) => {
-      // 流式逐字响应
-      assistantMsg.content += token;
+    false,
+    files,
+    () => {
       if (currentCourse.value?.id === activeCourseId) {
         scrollToBottom();
       }
     },
     (parsedCourseName) => {
-      // 对话完成回调
-      if (activeCourseId && cocreationStore.coursesData[activeCourseId]) {
-        cocreationStore.coursesData[activeCourseId].isGenerating = false;
-      }
-
-      // 清洗不可见标签
-      const cleanContent = assistantMsg.content.replace(/<course_name>.*?<\/course_name>/g, '').trim();
-      assistantMsg.content = cleanContent;
-      // 模拟生成的建议回复
-      assistantMsg.suggestions = ['我觉得这个大纲不错', '能否再细化一下案例部分？'];
-
       if (currentCourse.value?.id === activeCourseId) {
         calculateScrollNodes();
       }
-
-      // 同步可能的标题更新
       if (parsedCourseName && activeCourseId) {
         coursewareStore.updateCourseware(activeCourseId, { title: parsedCourseName });
       }
-    },
-    (err) => {
-      if (currentCourse.value?.id === activeCourseId) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
-        message.error('对话生成错误: ' + errorMsg);
-      }
-      if (activeCourseId && cocreationStore.coursesData[activeCourseId]) {
-        cocreationStore.coursesData[activeCourseId].isGenerating = false;
-      }
-    },
-    currentCourse.value ? {
-      title: currentCourse.value.title,
-      subject: currentCourse.value.subject,
-      grade: currentCourse.value.grade
-    } : undefined
+    }
   );
 };
 
 /**
  * 【函数】handleStopGeneration
- * 作用：手动切断 AI 对话流链接
+ * 作用：手动切断 AI 对话流链接（暂不支持后端中止时，可前端处理 loading 态）
  */
 const handleStopGeneration = () => {
-  stopGeneration();
   cocreationStore.isGenerating = false;
   message.info('已停止生成');
 };

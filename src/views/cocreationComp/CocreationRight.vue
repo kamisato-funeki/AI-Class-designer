@@ -153,19 +153,30 @@ const DEFAULT_MINDMAP_DATA = {
   ]
 };
 
-/**
- * 【函数】saveMindMapData
- * 作用：暂存当前思维导图的 JSON 数据至 Pinia Store
- * 业务逻辑：确保用户在对话、预览 PPT 切换回思维导图时，其编辑结果不会丢失。
- */
 const saveMindMapData = () => {
   if (!mindMapInstance) return;
   try {
     // @ts-expect-error typings
     const data = mindMapInstance.getData();
+    // 简单防抖或判断避免频繁触发后端请求
     cocreationStore.mindmapData = data;
   } catch { /* ignore */ }
 };
+
+// 后端发起全量替换导致的数据变化，需同步给画布实例
+// 为了避免循环触发，我们只有在深层结构确实不同时才 setData
+watch(() => cocreationStore.mindmapData, (newVal) => {
+  if (mindMapInstance && newVal) {
+    try {
+      // @ts-expect-error typings
+      const currentDataStr = JSON.stringify(mindMapInstance.getData());
+      const newDataStr = JSON.stringify(newVal);
+      if (currentDataStr !== newDataStr) {
+        mindMapInstance.setData(newVal);
+      }
+    } catch {}
+  }
+}, { deep: true });
 
 // 动态获取配套的思维导图主题配置（重点为字体颜色与透明背景适应双主题）
 const getCustomThemeConfig = (isDark: boolean) => {
@@ -275,29 +286,42 @@ watch(() => settingsStore.theme, (theme) => {
   }
 });
 
-// 处理“确认并生成”大纲对应物料的模拟异步方法
-const handleConfirmSummary = () => {
+// 处理“确认并生成”大纲对应物料的真实的异步方法
+const handleConfirmSummary = async () => {
   if (cocreationStore.generateOptions.length === 0) {
     message.warning('请至少选择一项需要生成的内容');
     return;
   }
   isGeneratingMaterials.value = true;
   message.loading({ content: '正在生成对应的资料...', key: 'gen', duration: 0 });
-  setTimeout(() => {
-    isGeneratingMaterials.value = false;
+  
+  try {
+    await cocreationStore.generateMaterialsTarget([...cocreationStore.generateOptions]);
     cocreationStore.materialGenerated = true; // 解锁预览
     cocreationStore.generatedOptions = [...cocreationStore.generateOptions];
     message.success({ content: '对应部分资料生成成功', key: 'gen', duration: 2 });
-  }, 2000);
+  } catch {
+    message.error({ content: '生成失败', key: 'gen', duration: 2 });
+  } finally {
+    isGeneratingMaterials.value = false;
+  }
 };
 
 // 独立功能：重新生成当前激活页签的资料内容
-const handleRegenerateCurrent = () => {
+const handleRegenerateCurrent = async () => {
   const tName = activeTab.value === 'mindmap' ? '思维导图大纲' : getMaterialName(activeTab.value);
   message.loading({ content: `正在重新生成 ${tName} ...`, key: 'regen', duration: 0 });
-  setTimeout(() => {
+  
+  try {
+    if (activeTab.value === 'mindmap') {
+      await cocreationStore.regenerateMindmap();
+    } else {
+      await cocreationStore.regenerateMaterialTarget(activeTab.value);
+    }
     message.success({ content: `${tName} 重新生成成功`, key: 'regen', duration: 2 });
-  }, 1500);
+  } catch {
+    message.error({ content: `${tName} 重新生成失败`, key: 'regen', duration: 2 });
+  }
 };
 
 // 工具函数：Tab key 映射可视中文字段
@@ -335,7 +359,9 @@ const handleExportPng = () => {
 // 执行右键菜单指定操作
 const handleContextAction = (action: string) => {
   if (!mindMapInstance || !contextMenuState.node) return;
-  const mm = mindMapInstance as unknown as { execCommand: (cmd: string) => void };
+  const mm = mindMapInstance as unknown as { execCommand: (cmd: string) => void, getData: () => unknown };
+  
+  // 执行画布操作
   if (action === 'INSERT_NODE') {
     mm.execCommand('INSERT_NODE');
   } else if (action === 'INSERT_CHILD_NODE') {
@@ -343,20 +369,57 @@ const handleContextAction = (action: string) => {
   } else if (action === 'REMOVE_NODE') {
     mm.execCommand('REMOVE_NODE');
   }
+  
   contextMenuState.visible = false;
+  
+  // 发起对后端的 CRUD 通知。此处作为附加逻辑：
+  // 等待绘图循环完成后提取最新数据。
+  setTimeout(() => {
+    try {
+      const newData = mm.getData();
+      let crudType: 'add' | 'update' | 'delete' | 'query' = 'update';
+      if (action.includes('INSERT')) crudType = 'add';
+      if (action.includes('REMOVE')) crudType = 'delete';
+      cocreationStore.mindMapCrud(crudType, newData);
+    } catch {}
+  }, 100);
 };
 
 /**
  * 【回调】底部操作群
  */
-const downloadMaterial = () => {
-  message.success('开始下载全部资料包...');
+const downloadMaterial = async () => {
+  message.success('已发起全量下载请求...');
+  if (cocreationStore.generatedOptions.length > 0) {
+    for (const type of cocreationStore.generatedOptions) {
+      await downloadSingleMaterial(type)
+    }
+  }
 };
-const downloadSingleMaterial = (tab: string) => {
-  message.success(`开始下载单项资料：${getMaterialName(tab)}...`);
+const downloadSingleMaterial = async (tab: string) => {
+  message.loading({ content: `正在获取 ${getMaterialName(tab)} 下载链接...`, key: 'download' });
+  const url = await cocreationStore.downloadMaterialByName(tab);
+  if (url) {
+    // 模拟文件下载流程
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `课程资料_${getMaterialName(tab)}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    message.success({ content: `已开始下载 ${getMaterialName(tab)}`, key: 'download' });
+  } else {
+    message.error({ content: `获取 ${getMaterialName(tab)} 下载链接失败`, key: 'download' });
+  }
 };
-const handleBoardPrompt = (val: string) => {
-  message.success(`发送局部修改指令：${val}`);
+const handleBoardPrompt = async (val: string) => {
+  message.loading({ content: `正在发送局部修改指令...`, key: 'prompt' });
+  if (activeTab.value === 'mindmap') {
+    await cocreationStore.modifyMindmapPartial(val);
+  } else {
+    await cocreationStore.modifyMaterialPartial(activeTab.value, val);
+  }
+  message.success({ content: `局部修改执行完成`, key: 'prompt' });
 };
 
 /**

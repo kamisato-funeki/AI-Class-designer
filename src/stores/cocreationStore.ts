@@ -1,38 +1,37 @@
 /**
  * AI 共创业务状态中心 (useCocreationStore)
- * 业务职责：
- * 1. 多课件并行态管理：采用 coursesData 字典结构落地“一课一态”隔离机制，支持教师在多个 AI 共创任务间无感切换。
- * 2. 对话脉络维护：实时记录并同步用户与 AI 设计助手之间的对话流，支持语音、文件及文本的多模态输入。
- * 3. 素材状态编排：管控 PPT、教案、短视频等多元教学素材的生成进度（isGenerating）与最终产物（materials）。
- * 4. 实时流式响应支持：通过 updateLastMessage 接口驱动打字机效果，提升人机协作的即时感。
  */
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { BoardMaterial, ChatMessage, CourseCocreationData } from '../types/types'
-import { apiGetCocreationMaterials, apiCocreationChat } from '../api/cocreation'
 import { v4 as uuidv4 } from 'uuid'
 import dayjs from 'dayjs'
+import {
+  apiGetCocreationMaterials,
+  apiStreamCocreationChat,
+  apiMindMapCrud,
+  apiModifyMindmapPartial,
+  apiRegenerateMindmap,
+  apiGenerateMaterials,
+  apiDownloadMaterial,
+  apiModifyMaterialPartial,
+  apiRegenerateMaterial
+} from '../api/cocreation'
 
 /** 获取当前时间字符串（格式：YYYY-MM-DD HH:mm:ss） */
 const now = () => dayjs().format('YYYY-MM-DD HH:mm:ss')
 
 export const useCocreationStore = defineStore('cocreation', () => {
-  /** 当前正在操作的课件 ID */
+  /** 当前选中的课件 ID */
   const currentCoursewareId = ref<string>('')
-
-  /**
-   * 所有课件的共创数据字典
-   * 以课件 ID 为键，存储各自独立的共创状态，
-   * 支持多课件并行操作而不互相干扰。
-   */
+  /** 多个课件的数据存储字典，按课件 ID 索引 */
   const coursesData = ref<Record<string, CourseCocreationData>>({})
 
   /**
-   * 【内部辅助函数】getOrCreateCourseData
-   * 作用：状态兜底初始化
+   * 获取或初始化指定课件的数据容器
    * @param id 课件 ID
-   * @returns 保证返回一个标准的共创数据结构
+   * @returns 课件对应的状态数据对象
    */
   const getOrCreateCourseData = (id: string) => {
     if (!coursesData.value[id]) {
@@ -42,7 +41,7 @@ export const useCocreationStore = defineStore('cocreation', () => {
         chatHistory: [],
         isGenerating: false,
         materialGenerated: false,
-        generateOptions: ['ppt', 'doc', 'video', 'html'], // 业务默认支持的生成矩阵
+        generateOptions: ['ppt', 'doc', 'video', 'html'],
         generatedOptions: [],
         hideSummary: false,
       }
@@ -50,10 +49,7 @@ export const useCocreationStore = defineStore('cocreation', () => {
     return coursesData.value[id]
   }
 
-  /**
-   * 【派生状态】currentData
-   * 作用：根据 currentCoursewareId 自动解包对应的数据块，简化上层模板的调用。
-   */
+  /** 当前活跃课件的完整数据对象 (Computed) */
   const currentData = computed(() => {
     if (!currentCoursewareId.value) return null
     return getOrCreateCourseData(currentCoursewareId.value)
@@ -61,49 +57,49 @@ export const useCocreationStore = defineStore('cocreation', () => {
 
   // ==================== 业务属性映射 (Computed Get/Set) ====================
 
-  /** 关键素材产物列表 */
+  /** 课件相关的资料列表（如 PPT、教案等） */
   const materials = computed({
     get: () => currentData.value?.materials || [],
     set: (val: BoardMaterial[]) => { if (currentData.value) currentData.value.materials = val },
   })
 
-  /** AI 对话回放记录 */
+  /** AI 对话的历史记录 */
   const chatHistory = computed({
     get: () => currentData.value?.chatHistory || [],
     set: (val: ChatMessage[]) => { if (currentData.value) currentData.value.chatHistory = val },
   })
 
-  /** AI 生成引擎状态锁 */
+  /** 是否正在生成内容（Loading 状态） */
   const isGenerating = computed({
     get: () => currentData.value?.isGenerating || false,
     set: (val: boolean) => { if (currentData.value) currentData.value.isGenerating = val },
   })
 
-  /** 业务开关：是否已产出可视化教学素材 */
+  /** 资料是否已全部生成完毕 */
   const materialGenerated = computed({
     get: () => currentData.value?.materialGenerated || false,
     set: (val: boolean) => { if (currentData.value) currentData.value.materialGenerated = val },
   })
 
-  /** 允许用户选取的生成选项集合 */
+  /** 需要生成的资料选项类型（默认：ppt, doc, video, html） */
   const generateOptions = computed({
     get: () => currentData.value?.generateOptions || ['ppt', 'doc', 'video', 'html'],
     set: (val: string[]) => { if (currentData.value) currentData.value.generateOptions = val },
   })
 
-  /** 已成功入库的生成项 */
+  /** 已经成功生成的资料类型列表 */
   const generatedOptions = computed({
     get: () => currentData.value?.generatedOptions || [],
     set: (val: string[]) => { if (currentData.value) currentData.value.generatedOptions = val },
   })
 
-  /** UI 侧边栏/摘要面板折叠态 */
+  /** 是否隐藏生成摘要信息 */
   const hideSummary = computed({
     get: () => currentData.value?.hideSummary || false,
     set: (val: boolean) => { if (currentData.value) currentData.value.hideSummary = val },
   })
 
-  /** 思维导图底层数据模型 */
+  /** 课程大纲思维导图数据 */
   const mindmapData = computed({
     get: () => currentData.value?.mindmapData || null,
     set: (val: object | null) => {
@@ -114,20 +110,17 @@ export const useCocreationStore = defineStore('cocreation', () => {
   // ==================== 异步业务指令 (Actions) ====================
 
   /**
-   * 【异步指令】loadMaterials
-   * 作用：拉取共创空间的初始化资产
-   * @param id 目标课件 ID
-   * 业务逻辑：设置上下文 ID，尝试请求 API，并在异常时注入 Mock 教研素材预览。
+   * 加载指定课件的资料资产列表
+   * @param id 课件 ID
    */
   const loadMaterials = async (id: string) => {
     currentCoursewareId.value = id
-    getOrCreateCourseData(id) // 确保数据结构已初始化
+    getOrCreateCourseData(id)
 
     try {
       const res = await apiGetCocreationMaterials(id)
       materials.value = res.data.data
     } catch {
-      // API 降级演练，确保教学流程不中断
       materials.value = [
         { id: 'mat1', type: 'ppt', name: '全景课堂大纲.pptx', url: '/data/sample.pptx' },
         { id: 'mat2', type: 'word', name: '教师参考教案.docx', url: '/data/sample.docx' },
@@ -137,48 +130,74 @@ export const useCocreationStore = defineStore('cocreation', () => {
   }
 
   /**
-   * 【异步指令】sendChatMessage
-   * 作用：执行核心 AI 推理对话
-   * @param content 文字内容
-   * @param isVoice 语音转文字标识
-   * @param file 附加物（如教参、图片）
-   * 业务逻辑：同步发送至后端 API，并实时更新 chatHistory 对话轨。
+   * 发送流式对话消息，并处理 AI 返回的文本、思维导图更新和建议
+   * @param content 用户输入的文本内容
+   * @param isVoice 是否为语音输入（影响消息类型显示）
+   * @param files 附件文件列表（可选）
+   * @param onToken 每次接收到流式 Token 时的回调
+   * @param onCompleteCb 对话完成后的回调（包含解析出的课件名称建议）
    */
-  const sendChatMessage = async (
+  const sendStreamChatMessage = async (
     content: string,
     isVoice: boolean = false,
-    file?: File,
+    files?: File[],
+    onToken?: () => void,
+    onCompleteCb?: (parsedName?: string) => void
   ) => {
+    isGenerating.value = true
+
+    // 添加 AI 占位消息
+    const assistantMsg: ChatMessage = {
+      id: uuidv4(),
+      role: 'assistant',
+      content: '',
+      type: 'text',
+      time: now(),
+    }
+    chatHistory.value.push(assistantMsg)
+
     try {
-      const res = await apiCocreationChat(content, isVoice, file)
-      chatHistory.value.push(res.data.data)
-      return res.data.data
-    } catch {
-      // Mock 返回 AI 的启发式思考
-      const mockReply: ChatMessage = {
-        id: uuidv4(),
-        role: 'assistant',
-        content: '我已深入分析您提供的教学资源。针对这一节课，我建议您可以尝试引导式提问来增强学生的互动感...',
-        type: 'text',
-        time: now(),
-      }
-      chatHistory.value.push(mockReply)
-      return mockReply
+      await apiStreamCocreationChat(
+        content,
+        isVoice,
+        files,
+        (textChunk, mindmapUpdate, suggestions) => {
+          assistantMsg.content += textChunk
+          if (mindmapUpdate) {
+            // 全量覆盖数据
+            mindmapData.value = mindmapUpdate
+          }
+          if (suggestions && suggestions.length > 0) {
+            assistantMsg.suggestions = suggestions
+          }
+          if (onToken) onToken()
+        },
+        (parsedName) => {
+          isGenerating.value = false
+          if (onCompleteCb) onCompleteCb(parsedName)
+        },
+        (err) => {
+          isGenerating.value = false
+          console.error(err)
+        }
+      )
+    } catch (e) {
+      isGenerating.value = false
+      console.error(e)
     }
   }
 
   /**
-   * 【操作指令】addMessage
-   * 作用：即时同步用户输入到界面对话轨
+   * 手动向对话历史中添加一条消息
+   * @param msg 消息对象
    */
   const addMessage = (msg: ChatMessage) => {
     chatHistory.value.push(msg)
   }
 
   /**
-   * 【操作指令】updateLastMessage
-   * 作用：支持 WebSocket/流式 API 效果的核心更新接口
-   * 策略：不产生新的消息记录，而是通过响应式特性实时微调最后一条消息的 Content 文本。
+   * 更新历史记录中最后一条消息的内容（通常用于流式更新后的最终修正）
+   * @param content 新的内容字符串
    */
   const updateLastMessage = (content: string) => {
     if (chatHistory.value.length > 0) {
@@ -188,6 +207,95 @@ export const useCocreationStore = defineStore('cocreation', () => {
         lastMsg.content = content
       }
     }
+  }
+
+  // ============== 思维导图相关操作 ==============
+
+  /**
+   * 对课件大纲思维导图执行 CRUD 操作
+   * @param action 操作类型：'add' | 'update' | 'delete' | 'query'
+   * @param nodeData 节点数据（新增或修改时需要）
+   * @param nodeId 目标节点 ID（修改或删除时需要）
+   */
+  const mindMapCrud = async (action: 'add'|'update'|'delete'|'query', nodeData?: unknown, nodeId?: string) => {
+    if (!currentCoursewareId.value) return
+    try {
+      const res = await apiMindMapCrud(currentCoursewareId.value, action, nodeData, nodeId)
+      mindmapData.value = res.data.data.mindmapData as object
+    } catch (e) { console.error('CRUD Failed', e) }
+  }
+
+  /**
+   * 针对思维导图的局部节点进行 AI 修改
+   * @param prompt 修改指令/提示
+   * @param nodeId 目标节点 ID
+   */
+  const modifyMindmapPartial = async (prompt: string, nodeId?: string) => {
+    if (!currentCoursewareId.value) return
+    try {
+      const res = await apiModifyMindmapPartial(currentCoursewareId.value, prompt, nodeId)
+      mindmapData.value = res.data.data.mindmapData as object
+    } catch (e) { console.error('Modify Mindmap Failed', e) }
+  }
+
+  /**
+   * 重新生成完整的思维导图大纲
+   */
+  const regenerateMindmap = async () => {
+    if (!currentCoursewareId.value) return
+    try {
+      const res = await apiRegenerateMindmap(currentCoursewareId.value)
+      mindmapData.value = res.data.data.mindmapData as object
+    } catch (e) { console.error('Regenerate Mindmap Failed', e) }
+  }
+
+  /**
+   * 根据当前思维导图大纲，批量开始生成指定类型的课件资料（如生成 PPT、教案等）
+   * @param types 需要生成的资料类型列表
+   */
+  const generateMaterialsTarget = async (types: string[]) => {
+    if (!currentCoursewareId.value) return
+    try {
+      await apiGenerateMaterials(currentCoursewareId.value, types)
+    } catch (e) { console.error('Generate Materials Failed', e) }
+  }
+
+  // ============== 资料资产相关操作 ==============
+
+  /**
+   * 获取指定类型资料的下载/查看链接
+   * @param type 资料类型 (ppt, word, pdf, h5, video 等)
+   * @returns 资料的 URL 地址，失败返回 null
+   */
+  const downloadMaterialByName = async (type: string) => {
+    if (!currentCoursewareId.value) return null
+    try {
+      const res = await apiDownloadMaterial(currentCoursewareId.value, type)
+      return res.data.data.url
+    } catch (e) { console.error('Download Material Failed', e); return null }
+  }
+
+  /**
+   * 针对已生成的具体资料进行 AI 局部修正
+   * @param type 资料类型
+   * @param prompt 修改指令
+   */
+  const modifyMaterialPartial = async (type: string, prompt: string) => {
+    if (!currentCoursewareId.value) return
+    try {
+      await apiModifyMaterialPartial(currentCoursewareId.value, type, prompt)
+    } catch (e) { console.error('Modify Material Failed', e) }
+  }
+
+  /**
+   * 重新生成指定类型的具体课件资料
+   * @param type 资料类型
+   */
+  const regenerateMaterialTarget = async (type: string) => {
+    if (!currentCoursewareId.value) return
+    try {
+      await apiRegenerateMaterial(currentCoursewareId.value, type)
+    } catch (e) { console.error('Regenerate Material Failed', e) }
   }
 
   return {
@@ -202,8 +310,17 @@ export const useCocreationStore = defineStore('cocreation', () => {
     hideSummary,
     mindmapData,
     loadMaterials,
-    sendChatMessage,
+    sendStreamChatMessage,
     addMessage,
     updateLastMessage,
+    // mindmap
+    mindMapCrud,
+    modifyMindmapPartial,
+    regenerateMindmap,
+    generateMaterialsTarget,
+    // materials
+    downloadMaterialByName,
+    modifyMaterialPartial,
+    regenerateMaterialTarget
   }
 })
