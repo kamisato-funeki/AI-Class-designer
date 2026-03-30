@@ -111,14 +111,6 @@ export function apiDownloadHomeworkAttachment(url: string, name?: string): Promi
   return defaultAxios.get(url, { responseType: 'blob', params: { name } })
 }
 
-/**
- * 获取具体学生的作业提交详情
- * @param homeworkId - 作业 ID
- * @param studentId - 学生 ID
- */
-export function apiGetStudentHomeworkDetail(homeworkId: string, studentId: string): CommonResponseData<unknown> {
-  return defaultAxios.get(`/homeworks/${homeworkId}/students/${studentId}`)
-}
 
 /**
  * 更新学生作业的评分和评语
