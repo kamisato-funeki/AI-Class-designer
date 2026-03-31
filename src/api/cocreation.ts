@@ -7,7 +7,7 @@
 
 import { defaultAxios } from './base'
 import type { CommonResponseData } from './base'
-import type { BoardMaterial } from '../types/types'
+import type { BoardMaterial, ChatMessage, MindMapNode } from '../types/types'
 import type { MaterialUrlResponse } from '../types/creationTypes'
 
 /**
@@ -23,6 +23,18 @@ export function apiGetCocreationMaterials(
 }
 
 /**
+ * 获取指定课件的共创历史明细（包含历史对话及思维导图等）
+ * 在进入 AI 共创页面时调用，恢复上下文。
+ * @param coursewareId - 目标课件 ID
+ * @returns 历史对话数组与思维导图对象
+ */
+export function apiGetCocreationHistory(
+  coursewareId: string,
+): CommonResponseData<{ chatHistory: ChatMessage[], mindmapData?: MindMapNode }> {
+  return defaultAxios.get(`/cocreation/${coursewareId}/history`)
+}
+
+/**
  * 流式对话接口 (面向自有后端)
  * 采用原生 fetch 进行长连接流式响应（因为 browser native 更好处理 SSE 或 NDJSON），
  * 携带 defaultAxios 配置好的 baseURL 以保持基础环境变量一致。
@@ -30,15 +42,14 @@ export function apiGetCocreationMaterials(
  */
 export async function apiStreamCocreationChat(
   message: string,
-  isVoice: boolean,
   files?: File[],
-  onData?: (textChunk: string, mindmapUpdate?: object, suggestions?: string[]) => void,
+  onData?: (textChunk: string, mindmapUpdate?: MindMapNode, suggestions?: string[]) => void,
   onComplete?: (finalCourseName?: string) => void,
   onError?: (err: Error) => void,
+  signal?: AbortSignal
 ) {
   const formData = new FormData()
   formData.append('message', message)
-  formData.append('isVoice', String(isVoice))
   if (files && files.length > 0) {
     files.forEach(file => formData.append('files', file))
   }
@@ -51,6 +62,7 @@ export async function apiStreamCocreationChat(
     const response = await fetch(url, {
       method: 'POST',
       body: formData,
+      signal,
       // 如果后端要求跨域携带 cookie，还需加入 credentials: 'include' 等，视 base 配置而定
     })
 
@@ -127,9 +139,20 @@ export async function apiStreamCocreationChat(
 
     if (onComplete) onComplete()
   } catch (error: unknown) {
+    // 忽略主动中断的报错
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return
+    }
     // @ts-expect-error error unknown type payload fallback
     if (onError) onError(error)
   }
+}
+
+/**
+ * 中断当前课程的共创对话
+ */
+export function apiStopCocreationChat(coursewareId: string): CommonResponseData<unknown> {
+  return defaultAxios.post(`/cocreation/${coursewareId}/chat/stop`)
 }
 
 // ==================== 课程大纲（思维导图）API ====================

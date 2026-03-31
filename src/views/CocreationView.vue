@@ -45,6 +45,7 @@ const initCourseware = () => {
   const id = route.query.id as string;
   if (id) {
     cocreationStore.loadMaterials(id);
+    cocreationStore.loadCourseHistory(id);
   }
 };
 

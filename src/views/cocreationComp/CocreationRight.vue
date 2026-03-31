@@ -70,8 +70,9 @@
  * 2. 挂载中间的主体渲染区，包括思维导图页 (RightMindMapBoard) 与资源预览页 (RightPreviewBoard)。
  * 3. 维护共用的上下文状态（如缩放、全屏变量等）和实例化第三方视图引擎（如 mindmap）。
  */
-import { ref, reactive, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, watch, nextTick, onMounted, onUnmounted, computed } from 'vue';
 import { message } from 'ant-design-vue';
+import { debounce } from 'lodash';
 import MindMap from 'simple-mind-map';
 // @ts-expect-error simple-mind-map typings uncomplete
 import Export from 'simple-mind-map/src/plugins/Export.js';
@@ -85,6 +86,7 @@ import RightBoardFooter from './RightBoardFooter.vue';
 
 import { useCocreationStore } from '../../stores/cocreationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import type { MindMapInstance, MindMapNode } from '../../types/types';
 
 // 状态库
 const cocreationStore = useCocreationStore();
@@ -94,10 +96,19 @@ const settingsStore = useSettingsStore();
  * 【响应式变量：导航与预览资产地址】
  */
 const activeTab = ref<'mindmap' | 'ppt' | 'doc' | 'video' | 'html'>('mindmap');
-const pptUrl = ref('https://docs.google.com/presentation/d/1iIU9QfGpr9F101KvhVCsd9RtpyOQM0KBUIcf1l6W63s/edit?usp=sharing');
-const docUrl = ref('https://image2url.com/r2/default/files/1772455500887-fda7d267-b975-4a9a-abc9-d14489518cd5.docx');
-const videoUrl = ref('https://www.w3schools.com/html/mov_bbb.mp4');
-const htmlUrl = ref('https://bilibili.com');
+
+const pptUrl = computed(() => {
+  return cocreationStore.materials.find(m => m.type === 'ppt')?.url || 'https://docs.google.com/presentation/d/1iIU9QfGpr9F101KvhVCsd9RtpyOQM0KBUIcf1l6W63s/edit?usp=sharing';
+});
+const docUrl = computed(() => {
+  return cocreationStore.materials.find(m => m.type === 'word')?.url || 'https://image2url.com/r2/default/files/1772455500887-fda7d267-b975-4a9a-abc9-d14489518cd5.docx';
+});
+const videoUrl = computed(() => {
+  return cocreationStore.materials.find(m => m.type === 'video')?.url || 'https://www.w3schools.com/html/mov_bbb.mp4';
+});
+const htmlUrl = computed(() => {
+  return cocreationStore.materials.find(m => m.type === 'html')?.url || 'https://bilibili.com';
+});
 
 /**
  * 【响应式变量：UI 与缩放】
@@ -113,10 +124,10 @@ const contextMenuState = reactive({
   visible: false,
   x: 0,
   y: 0,
-  node: null as unknown
+  node: null as MindMapNode | null
 });
 
-let mindMapInstance: MindMap | null = null;
+let mindMapInstance: MindMapInstance | null = null;
 
 // 顶部 Toolbar 回调：视图放大
 const zoomIn = () => {
@@ -137,7 +148,6 @@ const zoomOut = () => {
 // 同步 SimpleMindMap 比例
 const updateMindMapScale = () => {
   if (activeTab.value === 'mindmap' && mindMapInstance) {
-    // @ts-expect-error ignore simple-mind-map argument typings
     mindMapInstance.view.setScale(zoomLevels['mindmap']);
   }
 };
@@ -153,22 +163,20 @@ const DEFAULT_MINDMAP_DATA = {
   ]
 };
 
-const saveMindMapData = () => {
+const saveMindMapData = debounce(() => {
   if (!mindMapInstance) return;
   try {
-    // @ts-expect-error typings
     const data = mindMapInstance.getData();
-    // 简单防抖或判断避免频繁触发后端请求
+    // 使用防抖避免频繁触发后端请求
     cocreationStore.mindmapData = data;
   } catch { /* ignore */ }
-};
+}, 500);
 
 // 后端发起全量替换导致的数据变化，需同步给画布实例
 // 为了避免循环触发，我们只有在深层结构确实不同时才 setData
 watch(() => cocreationStore.mindmapData, (newVal) => {
   if (mindMapInstance && newVal) {
     try {
-      // @ts-expect-error typings
       const currentDataStr = JSON.stringify(mindMapInstance.getData());
       const newDataStr = JSON.stringify(newVal);
       if (currentDataStr !== newDataStr) {
@@ -220,14 +228,14 @@ const initMindMap = () => {
     if (mindMapInstance) mindMapInstance.destroy();
 
     const savedData = cocreationStore.mindmapData;
-    // @ts-expect-error typings
+    // @ts-expect-error simple mind map typings are incomplete
     mindMapInstance = new MindMap({
       el: container,
       theme: settingsStore.theme === 'dark' ? 'dark' : 'default',
       themeConfig: getCustomThemeConfig(settingsStore.theme === 'dark'),
       data: savedData ?? DEFAULT_MINDMAP_DATA
-    });
-    // @ts-expect-error typings
+    }) as unknown as MindMapInstance;
+
     mindMapInstance.view.setScale(zoomLevels['mindmap']);
 
     // 初始渲染时稍微向左偏移，以避开右侧浮窗
@@ -237,18 +245,18 @@ const initMindMap = () => {
       }
     }, 100);
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    const mm = mindMapInstance as unknown as { on: (ev: string, fn: Function) => void };
+    const mm = mindMapInstance;
     mm.on('data_change', saveMindMapData);
     mm.on('node_text_edit_end', saveMindMapData);
 
     // 绑定右键及点击事件，实现自定义右键菜单逻辑
-    mm.on('node_contextmenu', (e: MouseEvent, node: unknown) => {
-      e.preventDefault();
+    mm.on('node_contextmenu', (e: unknown, node: unknown) => {
+      const mouseEvent = e as MouseEvent;
+      mouseEvent.preventDefault();
       contextMenuState.visible = true;
-      contextMenuState.x = e.clientX;
-      contextMenuState.y = e.clientY;
-      contextMenuState.node = node;
+      contextMenuState.x = mouseEvent.clientX;
+      contextMenuState.y = mouseEvent.clientY;
+      contextMenuState.node = node as MindMapNode;
     });
     mm.on('node_click', () => { contextMenuState.visible = false; });
     mm.on('draw_click', () => { contextMenuState.visible = false; });
@@ -359,7 +367,7 @@ const handleExportPng = () => {
 // 执行右键菜单指定操作
 const handleContextAction = (action: string) => {
   if (!mindMapInstance || !contextMenuState.node) return;
-  const mm = mindMapInstance as unknown as { execCommand: (cmd: string) => void, getData: () => unknown };
+  const mm = mindMapInstance;
   
   // 执行画布操作
   if (action === 'INSERT_NODE') {

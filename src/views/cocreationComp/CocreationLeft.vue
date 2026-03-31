@@ -253,7 +253,17 @@ onMounted(() => {
 // 监听当前协作的课件 ID 变化，执行初始化 Logic
 watch(
   () => [cocreationStore.currentCoursewareId, currentCourse.value?.id],
-  ([storeId, courseId]) => {
+  (newVals, oldVals) => {
+    const storeId = newVals[0];
+    const courseId = newVals[1];
+    const oldCourseId = oldVals ? oldVals[1] : undefined;
+
+    // 切换不同课件时进行清理，防止状态污染
+    if (oldCourseId && oldCourseId !== courseId) {
+      cocreationStore.cleanupCurrentData();
+      inputVal.value = '';
+      uploadedFiles.value = [];
+    }
     if (storeId && courseId && storeId === courseId) {
       nextTick(() => {
         checkAndSendInitialWelcome();
@@ -338,14 +348,13 @@ const handleSendChat = async (text: string, files?: File[]) => {
   
   await cocreationStore.sendStreamChatMessage(
     text,
-    false,
     files,
     () => {
       if (currentCourse.value?.id === activeCourseId) {
         scrollToBottom();
       }
     },
-    (parsedCourseName) => {
+    (parsedCourseName?: string) => {
       if (currentCourse.value?.id === activeCourseId) {
         calculateScrollNodes();
       }
@@ -358,11 +367,10 @@ const handleSendChat = async (text: string, files?: File[]) => {
 
 /**
  * 【函数】handleStopGeneration
- * 作用：手动切断 AI 对话流链接（暂不支持后端中止时，可前端处理 loading 态）
+ * 作用：调用 store 终止发送并截断与 AI 的后续回应过程
  */
 const handleStopGeneration = () => {
-  cocreationStore.isGenerating = false;
-  message.info('已停止生成');
+  cocreationStore.stopGeneration();
 };
 
 /**

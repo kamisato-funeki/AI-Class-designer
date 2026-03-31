@@ -37,9 +37,10 @@
 
             <a-tag v-if="cocreationStore.materialGenerated" color="green" style="position: absolute; top: 45px; right: 0px; font-size: 8px;">已生成</a-tag>
 
-            <div style="margin-top: 12px; text-align: right;display: flex; justify-content: center; align-items: center;">
+            <div style="margin-top: 12px; text-align: right;display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 8px;">
+              <a-progress v-if="isGeneratingMaterials" :percent="cocreationStore.generationProgress" size="small" :status="cocreationStore.generationProgress === 100 ? 'success' : 'active'" />
               <!-- 这里依然保留原有逻辑：若已生成过资料，此处的文案变为【重新生成】作为批量重构入口 -->
-              <a-button type="primary" size="small" @click="$emit('confirmSummary')" :loading="isGeneratingMaterials">
+              <a-button type="primary" size="small" @click="$emit('confirmSummary')" :loading="isGeneratingMaterials" :disabled="isGeneratingMaterials" style="width: 100%;">
                 {{ cocreationStore.materialGenerated ? '重新生成' : '确认并生成' }}
               </a-button>
             </div>

@@ -4,11 +4,13 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { BoardMaterial, ChatMessage, CourseCocreationData } from '../types/types'
+import { message } from 'ant-design-vue'
+import type { BoardMaterial, ChatMessage, CourseCocreationData, MindMapNode } from '../types/types'
 import { v4 as uuidv4 } from 'uuid'
 import dayjs from 'dayjs'
 import {
   apiGetCocreationMaterials,
+  apiGetCocreationHistory,
   apiStreamCocreationChat,
   apiMindMapCrud,
   apiModifyMindmapPartial,
@@ -16,7 +18,8 @@ import {
   apiGenerateMaterials,
   apiDownloadMaterial,
   apiModifyMaterialPartial,
-  apiRegenerateMaterial
+  apiRegenerateMaterial,
+  apiStopCocreationChat
 } from '../api/cocreation'
 
 /** 获取当前时间字符串（格式：YYYY-MM-DD HH:mm:ss） */
@@ -27,6 +30,9 @@ export const useCocreationStore = defineStore('cocreation', () => {
   const currentCoursewareId = ref<string>('')
   /** 多个课件的数据存储字典，按课件 ID 索引 */
   const coursesData = ref<Record<string, CourseCocreationData>>({})
+
+  /** 内部控制中止请求的实例 */
+  let abortController: AbortController | null = null
 
   /**
    * 获取或初始化指定课件的数据容器
@@ -44,6 +50,7 @@ export const useCocreationStore = defineStore('cocreation', () => {
         generateOptions: ['ppt', 'doc', 'video', 'html'],
         generatedOptions: [],
         hideSummary: false,
+        generationProgress: 0,
       }
     }
     return coursesData.value[id]
@@ -99,10 +106,16 @@ export const useCocreationStore = defineStore('cocreation', () => {
     set: (val: boolean) => { if (currentData.value) currentData.value.hideSummary = val },
   })
 
+  /** 生成流程进度：0 - 100 */
+  const generationProgress = computed({
+    get: () => currentData.value?.generationProgress || 0,
+    set: (val: number) => { if (currentData.value) currentData.value.generationProgress = val },
+  })
+
   /** 课程大纲思维导图数据 */
   const mindmapData = computed({
     get: () => currentData.value?.mindmapData || null,
-    set: (val: object | null) => {
+    set: (val: MindMapNode | null) => {
       if (currentData.value) currentData.value.mindmapData = val ?? undefined
     },
   })
@@ -130,6 +143,29 @@ export const useCocreationStore = defineStore('cocreation', () => {
   }
 
   /**
+   * 加载指定课件的历史对话记录与思维导图数据
+   * @param id 课件 ID
+   */
+  const loadCourseHistory = async (id: string) => {
+    currentCoursewareId.value = id
+    getOrCreateCourseData(id)
+
+    try {
+      const res = await apiGetCocreationHistory(id)
+      if (res.data.data) {
+        if (res.data.data.chatHistory && res.data.data.chatHistory.length > 0) {
+          chatHistory.value = res.data.data.chatHistory
+        }
+        if (res.data.data.mindmapData) {
+          mindmapData.value = res.data.data.mindmapData
+        }
+      }
+    } catch (error) {
+      console.warn('获取共创历史失败或为空:', error)
+    }
+  }
+
+  /**
    * 发送流式对话消息，并处理 AI 返回的文本、思维导图更新和建议
    * @param content 用户输入的文本内容
    * @param isVoice 是否为语音输入（影响消息类型显示）
@@ -139,12 +175,12 @@ export const useCocreationStore = defineStore('cocreation', () => {
    */
   const sendStreamChatMessage = async (
     content: string,
-    isVoice: boolean = false,
     files?: File[],
     onToken?: () => void,
     onCompleteCb?: (parsedName?: string) => void
   ) => {
     isGenerating.value = true
+    abortController = new AbortController()
 
     // 添加 AI 占位消息
     const assistantMsg: ChatMessage = {
@@ -159,9 +195,8 @@ export const useCocreationStore = defineStore('cocreation', () => {
     try {
       await apiStreamCocreationChat(
         content,
-        isVoice,
         files,
-        (textChunk, mindmapUpdate, suggestions) => {
+        (textChunk: string, mindmapUpdate?: MindMapNode, suggestions?: string[]) => {
           assistantMsg.content += textChunk
           if (mindmapUpdate) {
             // 全量覆盖数据
@@ -172,19 +207,52 @@ export const useCocreationStore = defineStore('cocreation', () => {
           }
           if (onToken) onToken()
         },
-        (parsedName) => {
+        (parsedName?: string) => {
           isGenerating.value = false
           if (onCompleteCb) onCompleteCb(parsedName)
         },
-        (err) => {
+        (err: Error) => {
           isGenerating.value = false
-          console.error(err)
-        }
+          message.error(`流式请求异常：${err.message || '未知错误'}`)
+        },
+        abortController.signal
       )
-    } catch (e) {
-      isGenerating.value = false
-      console.error(e)
+    } catch (error: unknown) {
+      const e = error as { name?: string, message?: string };
+      if (e.name !== 'AbortError') {
+        isGenerating.value = false
+        message.error(`提交流式请求失败：${e.message || '未知错误'}`)
+      }
     }
+  }
+
+  /**
+   * 中断当前正在进行的对话流，并向后端发送中止指令
+   */
+  const stopGeneration = async () => {
+    if (!isGenerating.value) return
+    if (abortController) {
+      abortController.abort()
+      abortController = null
+    }
+    isGenerating.value = false
+    message.warning('对话已中断')
+    if (currentCoursewareId.value) {
+      try {
+        await apiStopCocreationChat(currentCoursewareId.value)
+      } catch (error: unknown) {
+        // 后端无法中止等小报错，可静默处理或提示
+        console.warn('后端中止通知失败:', error)
+      }
+    }
+  }
+
+  /**
+   * 清理当前会话下的一些临时、不需要保留在 store 中的状态，例如避免切换课件时仍保持“正在生成”等错误状态
+   */
+  const cleanupCurrentData = () => {
+    if (isGenerating.value) stopGeneration()
+    generationProgress.value = 0
   }
 
   /**
@@ -221,8 +289,11 @@ export const useCocreationStore = defineStore('cocreation', () => {
     if (!currentCoursewareId.value) return
     try {
       const res = await apiMindMapCrud(currentCoursewareId.value, action, nodeData, nodeId)
-      mindmapData.value = res.data.data.mindmapData as object
-    } catch (e) { console.error('CRUD Failed', e) }
+      mindmapData.value = res.data.data.mindmapData as MindMapNode
+    } catch (error: unknown) { 
+      const e = error as { message?: string };
+      message.error(`大纲节点操作失败：${e.message || '未知错误'}`)
+    }
   }
 
   /**
@@ -234,8 +305,11 @@ export const useCocreationStore = defineStore('cocreation', () => {
     if (!currentCoursewareId.value) return
     try {
       const res = await apiModifyMindmapPartial(currentCoursewareId.value, prompt, nodeId)
-      mindmapData.value = res.data.data.mindmapData as object
-    } catch (e) { console.error('Modify Mindmap Failed', e) }
+      mindmapData.value = res.data.data.mindmapData as MindMapNode
+    } catch (error: unknown) { 
+      const e = error as { message?: string };
+      message.error(`局部修改导图失败：${e.message || '未知错误'}`)
+    }
   }
 
   /**
@@ -245,8 +319,11 @@ export const useCocreationStore = defineStore('cocreation', () => {
     if (!currentCoursewareId.value) return
     try {
       const res = await apiRegenerateMindmap(currentCoursewareId.value)
-      mindmapData.value = res.data.data.mindmapData as object
-    } catch (e) { console.error('Regenerate Mindmap Failed', e) }
+      mindmapData.value = res.data.data.mindmapData as MindMapNode
+    } catch (error: unknown) {
+      const e = error as { message?: string };
+      message.error(`重新生成导图失败：${e.message || '未知错误'}`)
+    }
   }
 
   /**
@@ -255,9 +332,31 @@ export const useCocreationStore = defineStore('cocreation', () => {
    */
   const generateMaterialsTarget = async (types: string[]) => {
     if (!currentCoursewareId.value) return
+    let timer: ReturnType<typeof setInterval>
     try {
+      // 启动伪轮询进度模拟 (0 -> 90%)
+      generationProgress.value = 0
+      timer = setInterval(() => {
+        if (generationProgress.value < 90) {
+          generationProgress.value += Math.floor(Math.random() * 8) + 2
+        }
+      }, 500)
+
       await apiGenerateMaterials(currentCoursewareId.value, types)
-    } catch (e) { console.error('Generate Materials Failed', e) }
+      
+      // 完成时填满 100
+      clearInterval(timer)
+      generationProgress.value = 100
+
+      // 生成完成后主动刷新资料列表，获取最新真实 URL
+      await loadMaterials(currentCoursewareId.value)
+    } catch (error: unknown) { 
+      clearInterval(timer!)
+      generationProgress.value = 0
+      const e = error as { message?: string };
+      message.error(`生成相关资料失败：${e.message || '未知错误'}`)
+      throw error;
+    }
   }
 
   // ============== 资料资产相关操作 ==============
@@ -272,7 +371,11 @@ export const useCocreationStore = defineStore('cocreation', () => {
     try {
       const res = await apiDownloadMaterial(currentCoursewareId.value, type)
       return res.data.data.url
-    } catch (e) { console.error('Download Material Failed', e); return null }
+    } catch (error: unknown) { 
+      const e = error as { message?: string };
+      message.error(`获取资料 ${type} 失败：${e.message || '未知错误'}`)
+      return null 
+    }
   }
 
   /**
@@ -284,7 +387,13 @@ export const useCocreationStore = defineStore('cocreation', () => {
     if (!currentCoursewareId.value) return
     try {
       await apiModifyMaterialPartial(currentCoursewareId.value, type, prompt)
-    } catch (e) { console.error('Modify Material Failed', e) }
+      // 修改完成后刷新列表获取最新链接
+      await loadMaterials(currentCoursewareId.value)
+    } catch (error: unknown) { 
+      const e = error as { message?: string };
+      message.error(`内容修改指令发送失败：${e.message || '未知错误'}`)
+      throw error;
+    }
   }
 
   /**
@@ -295,7 +404,13 @@ export const useCocreationStore = defineStore('cocreation', () => {
     if (!currentCoursewareId.value) return
     try {
       await apiRegenerateMaterial(currentCoursewareId.value, type)
-    } catch (e) { console.error('Regenerate Material Failed', e) }
+      // 重新生成后刷新列表获取最新链接
+      await loadMaterials(currentCoursewareId.value)
+    } catch (error: unknown) { 
+      const e = error as { message?: string };
+      message.error(`内容重新生成请求失败：${e.message || '未知错误'}`)
+      throw error;
+    }
   }
 
   return {
@@ -308,9 +423,13 @@ export const useCocreationStore = defineStore('cocreation', () => {
     generateOptions,
     generatedOptions,
     hideSummary,
+    generationProgress,
     mindmapData,
     loadMaterials,
+    loadCourseHistory,
     sendStreamChatMessage,
+    stopGeneration,
+    cleanupCurrentData,
     addMessage,
     updateLastMessage,
     // mindmap

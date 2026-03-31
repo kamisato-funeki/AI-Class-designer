@@ -399,6 +399,7 @@ export interface EducationNews {
  * @property generateOptions   - 待生成的选项列表
  * @property generatedOptions  - 已生成的选项列表
  * @property hideSummary       - 是否折叠摘要面板
+ * @property generationProgress- 生成进度 (0-100)
  * @property mindmapData       - 思维导图数据（可选）
  */
 export interface CourseCocreationData {
@@ -410,5 +411,46 @@ export interface CourseCocreationData {
   generateOptions: string[]
   generatedOptions: string[]
   hideSummary: boolean
-  mindmapData?: object
+  generationProgress: number
+  mindmapData?: MindMapNode
+}
+
+// ==================== 思维导图相关 ====================
+
+/**
+ * 思维导图节点基础数据
+ * @property text - 节点文本内容
+ */
+export interface MindMapNodeData {
+  text: string
+  [key: string]: unknown
+}
+
+/**
+ * 思维导图节点实体
+ * @property data     - 节点数据对象
+ * @property children - 子节点列表
+ */
+export interface MindMapNode {
+  data: MindMapNodeData
+  children?: MindMapNode[]
+}
+
+/**
+ * 思维导图组件暴露的部分 API
+ */
+export interface MindMapInstance {
+  view: {
+    setScale: (scale: number) => void
+    translateX: (x: number) => void
+    reset: () => void
+  }
+  destroy: () => void
+  getData: () => MindMapNode
+  setData: (data: unknown) => void
+  on: (event: string, callback: (...args: unknown[]) => void) => void
+  export: (format: string, download: boolean, name: string) => void
+  setTheme: (theme: string) => void
+  setThemeConfig: (config: object) => void
+  execCommand: (command: string, ...args: unknown[]) => void
 }
