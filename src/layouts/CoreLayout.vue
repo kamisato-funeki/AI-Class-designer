@@ -16,9 +16,9 @@
       theme="light" :class="{ 'mobile-sider': isMobile }"
       :style="{ borderRight: '1px solid var(--app-border)', zIndex: 10 }">
       <!-- 侧边栏主体：品牌 Logo 和 导航菜单 -->
-      <div class="logo-container">
-        <div class="logo-icon">ACD</div>
-        <span v-if="!collapsed" class="logo-text">AI 课件设计师</span>
+      <div :class="['logo-container', { 'collapsed': collapsed }]" @click="router.push('/')">
+        <img class="logo-icon" src="../assets/icons/笔耕01.png" />
+        <span v-if="!collapsed" class="logo-text">笔耕-智能备课助手</span>
       </div>
 
       <!-- 核心功能模块菜单 -->
@@ -391,13 +391,18 @@ const createNewCourse = async () => {
   align-items: center;
   padding: 0 16px;
   overflow: hidden;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.logo-container.collapsed {
+  padding: 0;
+  justify-content: center;
 }
 
 .logo-icon {
   width: 32px;
   height: 32px;
-  background: var(--color-primary);
-  color: white;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -405,12 +410,19 @@ const createNewCourse = async () => {
   font-weight: bold;
   font-size: 12px;
   flex-shrink: 0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.logo-icon:hover {
+  transform: scale(1.15) rotate(5deg);
+  filter: drop-shadow(0 0 8px rgba(var(--color-primary-rgb), 0.3));
 }
 
 .logo-text {
-  margin-left: 12px;
+  margin-left: 10px;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 15px;
   color: var(--app-text-main);
   white-space: nowrap;
 }

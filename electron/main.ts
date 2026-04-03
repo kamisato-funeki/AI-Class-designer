@@ -1,12 +1,20 @@
 import { app, BrowserWindow, Menu } from 'electron'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 let win: BrowserWindow | null = null;
 
 function createWindow() {
+  const iconPath = process.env.VITE_DEV_SERVER_URL
+    ? path.join(__dirname, '..', 'src', 'assets', 'icons', '笔耕01.png')
+    : path.join(__dirname, '..', 'dist', 'app-icon.png')
+
   win = new BrowserWindow({
     width: 1200,
     height: 800,
+    icon: iconPath,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

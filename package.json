@@ -78,11 +78,13 @@
   },
   "build": {
     "appId": "com.aiclassdesigner.app",
-    "productName": "AI Class Designer",
+    "productName": "笔耕",
+    "icon": "src/assets/icons/笔耕01.png",
     "directories": {
       "output": "dist_electron"
     },
     "win": {
+      "icon": "src/assets/icons/笔耕01.png",
       "target": [
         "nsis"
       ]
